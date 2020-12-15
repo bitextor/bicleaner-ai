@@ -35,6 +35,7 @@ class Model(object):
             "n_classes": 1,
             "entail_dir": "both",
             "epochs": 100,
+            "steps_per_epoch": 128,
             "patience": 20,
             "loss": "binary_crossentropy",
             "lr": 0.005,
@@ -153,6 +154,7 @@ class Model(object):
         self.model.fit(train_generator,
                        batch_size=self.settings["batch_size"],
                        epochs=self.settings["epochs"],
+                       steps_per_epoch=self.settings["steps_per_epoch"],
                        validation_data=dev_generator,
                        callbacks=[earlystop, lr_schedule],
                        verbose=1)
