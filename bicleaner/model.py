@@ -1,7 +1,6 @@
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
 from keras.models import load_model
 from glove import Corpus, Glove
-from tempfile import TemporaryDirectory
 import sentencepiece as sp
 import tensorflow as tf
 import logging

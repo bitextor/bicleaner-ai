@@ -1,11 +1,7 @@
 from keras.preprocessing.sequence import pad_sequences
-from keras import layers, Model, models, optimizers
-from keras import backend as K
 import sentencepiece as sp
 import numpy as np
 import keras
-import random
-import sys
 
 class TupleSentenceGenerator(keras.utils.Sequence):
     '''
