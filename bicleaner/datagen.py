@@ -87,31 +87,3 @@ class TupleSentenceGenerator(keras.utils.Sequence):
         self.index = np.arange(0, self.num_samples)
         if self.shuffle:
             np.random.shuffle(self.index) # Preventive shuffle in case data comes ordered
-
-    def text_to_index(self, text, verbose=False):
-        indexes = np.zeros((len(text), self.maxlen), dtype=int)
-        total_unks = 0
-        total_words = 0
-        mean_unks = 0
-
-        for i, line in enumerate(text):
-            unks = 0
-            for j, word in enumerate(line):
-                if j >= self.maxlen:
-                    break
-                if word in self.vocab:
-                    indexes[i,j] = self.vocab[word]
-                else:
-                    indexes[i,j] = random.sample(self.random_oovs, 1)[0] # UNK token
-                    unks += 1
-            total_unks += unks
-            length = min(len(line), self.maxlen)
-            total_words += length
-            mean_unks += 0 if length == 0 else unks/length
-
-        if verbose:
-            print('\tTotal UNK ratio: {:.2%}'.format(total_unks/total_words), file=sys.stderr)
-            print('\tPer sentence UNK ratio: {:.2%}'.format(mean_unks/len(text)), file=sys.stderr)
-
-        return indexes
-
