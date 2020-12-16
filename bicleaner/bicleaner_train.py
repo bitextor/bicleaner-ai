@@ -105,6 +105,7 @@ def perform_training(args):
     train_porn_removal(args)
 
     # Build negative samples for train
+    logging.info("Building training set.")
     noisy_target_tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     total_size, _, good_sentences, wrong_sentences = build_noisy_set(
             args.parallel_train,
