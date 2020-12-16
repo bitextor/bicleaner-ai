@@ -131,6 +131,8 @@ class Model(object):
                               batch_size=self.settings["batch_size"],
                               maxlen=self.settings["maxlen"])
         train_generator.load(train_set)
+        steps_per_epoch = min(len(train_generator),
+                              self.settings["steps_per_epoch"])
 
         dev_generator = TupleSentenceGenerator(
                             self.spm, shuffle=True,
@@ -154,7 +156,7 @@ class Model(object):
         self.model.fit(train_generator,
                        batch_size=self.settings["batch_size"],
                        epochs=self.settings["epochs"],
-                       steps_per_epoch=self.settings["steps_per_epoch"],
+                       steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
                        callbacks=[earlystop, lr_schedule],
                        verbose=1)
