@@ -168,97 +168,7 @@ def shuffle_chars(input_file_path):
     return noisy_file.name
 
 # Random shuffle corpora to ensure fairness of training and estimates.
-def old_shuffle(input, n_aligned, n_misaligned, wrong_examples_file):
-    logging.info("Shuffle starts")
-    good_sentences  = TemporaryFile("w+")
-    wrong_sentences = TemporaryFile("w+")
-    total_size   = 0
-    length_ratio = 0
-
-    with TemporaryFile("w+") as temp:
-        logging.info("Indexing file")
-        # (1) Calculate the number of lines, length_ratio, offsets
-        offsets = []
-        nline = 0
-        ssource = 0
-        starget = 0
-        count = 0
-
-        for line in input:
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) >= 2:
-                offsets.append(count)
-                count += len(bytearray(line, "UTF-8"))
-                ssource += len(parts[0])
-                starget += len(parts[1])
-                nline += 1
-                temp.write(line)
-
-        temp.flush()
-
-        total_size = nline
-
-        if total_size == 0:
-            raise Exception("The input file {} is empty".format(input.name))
-        elif not wrong_examples_file and  total_size < max(n_aligned, n_misaligned):
-            raise Exception("Aborting... The input file {} has less lines than required by the numbers of good ({}) and wrong ({}) examples. Total lines required: {}".format(input.name, n_aligned, n_misaligned, n_aligned + n_misaligned))
-
-        try:
-            length_ratio = (ssource * 1.0)/(starget * 1.0) # It was (starget * 1.0)/(ssource * 1.0)
-        except ZeroDivisionError:
-            length_ratio = math.nan
-        logging.info("Shuffling good sentences")
-        # (2) Get good sentences
-        random.shuffle(offsets)
-
-        for i in offsets[0:n_aligned]:
-            temp.seek(i)
-            good_sentences.write(temp.readline())
-
-        logging.info("Shuffling wrong sentences")
-        # (3) Get wrong sentences
-        if wrong_examples_file:
-            # The file is already shuffled
-            logging.info("Using wrong examples from file {} instead the synthetic method".format(wrong_examples_file.name))
-
-            count = 0
-            for i in wrong_examples_file:
-                wrong_sentences.write(i)
-                count += 1
-                if count == n_misaligned:
-                    break
-
-        else:
-            wrong_lines = min(total_size, n_misaligned)
-            if (wrong_lines > 0):
-                offsets_copy = offsets[:]
-                random.shuffle(offsets)
-                random.shuffle(offsets_copy)
-                for i in range(wrong_lines):
-                    temp.seek(offsets[i])
-                    line = temp.readline()
-                    parts = line.rstrip("\n").split("\t")
-                    wrong_sentences.write(parts[0])
-                    wrong_sentences.write("\t")
-                    temp.seek(offsets_copy[i])
-                    line = temp.readline()
-                    parts = line.rstrip("\n").split("\t")
-                    wrong_sentences.write(parts[1])
-                    wrong_sentences.write("\n")
-            else:
-                logging.warning("Number of misaligned examples is 0")
-        temp.close()
-    logging.info("Shuffling ends")
-
-    good_sentences.seek(0)
-    wrong_sentences.seek(0)
-    
-
-    return total_size, length_ratio, good_sentences, wrong_sentences
-
-
-# Random shuffle corpora to ensure fairness of training and estimates.
-def build_noisy_set(input, n_aligned, n_misaligned, wrong_examples_file, double_linked_zipf_freqs=None, noisy_target_tokenizer=None):
+def build_noisy_set(input, wrong_examples_file, double_linked_zipf_freqs=None, noisy_target_tokenizer=None):
     logging.info("Building training set.")
     good_sentences  = TemporaryFile("w+")
     wrong_sentences = TemporaryFile("w+")
@@ -287,6 +197,8 @@ def build_noisy_set(input, n_aligned, n_misaligned, wrong_examples_file, double_
         temp.flush()
 
         total_size = nline
+        n_aligned = total_size//2
+        n_misaligned = total_size//2
 
         if total_size == 0:
             raise Exception("The input file {} is empty".format(input.name))
@@ -407,6 +319,20 @@ def remove_words_randomly_from_sentence(sentence):
         del sentence[wordpos]
     return sentence
 
+# Load sentences from file in form of tuples (sent1, sent1, label)
+def load_tuple_sentences(input, label, nlines=None):
+    sents = ([], [], [])
+    for i, line in enumerate(input):
+        # Read until nlines is reached
+        if nlines is not None and i == (nlines - 1):
+            break
+        parts = line.rstrip("\n").split('\t')
+        sents[0].append(parts[0])
+        sents[1].append(parts[1])
+        sents[2].append(label)
+
+    return sents
+
 # Calculate precision, recall and accuracy over the 0.0,1.0,0.1 histogram of
 # good and  wrong alignments
 def precision_recall(hgood, hwrong):
@@ -516,7 +442,6 @@ def write_metadata(myargs, hgood, hwrong, lm_stats:DualLMStats):
     out.write(precision_hist)
     out.write(recall_hist)
     out.write(accuracy_hist)
-    out.write("length_ratio: {:1.7f}\n".format(myargs.length_ratio))
 
     if lm_stats != None:
         out.write("source_lm: {}\n".format(lm_file_sl))

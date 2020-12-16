@@ -1,18 +1,13 @@
 #!/usr/bin/env python
-from multiprocessing import cpu_count
-
-import joblib
-from sklearn import metrics
 from tempfile import TemporaryFile, NamedTemporaryFile
+from multiprocessing import cpu_count
 from timeit import default_timer
-
+import numpy as np
 import argparse
 import logging
-import numpy as np
 import os
 import random
 import sys
-import json
 
 #Allows to load modules while inside or outside the package  
 try:
@@ -20,14 +15,14 @@ try:
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from .training import build_noisy_set, precision_recall, write_metadata, train_fluency_filter, train_porn_removal
+    from .training import build_noisy_set, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from model import Model
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from training import build_noisy_set, precision_recall, write_metadata, train_fluency_filter, train_porn_removal
+    from training import build_noisy_set, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from tokenizer import Tokenizer
 
 logging_level = 0
@@ -39,15 +34,15 @@ def initialization():
     
     parser = argparse.ArgumentParser(prog=os.path.basename(sys.argv[0]), formatter_class=argparse.ArgumentDefaultsHelpFormatter, description=__doc__)
 
-    parser.add_argument('bilingual',  nargs='?', type=argparse.FileType('r'), default=sys.stdin,  help="Tab-separated bilingual input file")
-
     groupM = parser.add_argument_group("Mandatory")
     groupM.add_argument('-m', '--model_dir', type=check_dir, required=True, help="Model directory, metadata, classifier and Sentenceiece models will be saved in the same directory")
     groupM.add_argument('-s', '--source_lang', required=True, help="Source language")
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
     groupM.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=True, help="L language gzipped list of word frequencies")
     groupM.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=True, help="R language gzipped list of word frequencies")
-    groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=True, help="File containing monolingual sentences of both languages shuffled together")
+    groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=True, help="File containing monolingual sentences of both languages shuffled together to train embeddings")
+    groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to train the classifier")
+    groupM.add_argument('--parallel_test', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to test the classifier")
 
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
@@ -93,25 +88,10 @@ def initialization():
 
     return args
 
-def train_classifier():
-    return
-
 # Main loop of the program
 def perform_training(args):
     time_start = default_timer()
     logging.debug("Starting process")
-
-    #Read input to a named temporary file
-    count_input_lines = 0
-    input = NamedTemporaryFile(mode="w",delete=False)
-    for line in args.bilingual:
-        input.write(line)
-        count_input_lines = count_input_lines +1
-    input.close()
-
-    # if count_input_lines < 10000:
-    #     logging.error("Training corpus must be at least 10K sentences long (was {}).".format(count_input_lines))
-    #     sys.exit(1)
 
     # Load word frequencies
     if args.source_word_freqs:
@@ -124,38 +104,23 @@ def perform_training(args):
     # Train porn removal classifier
     train_porn_removal(args)
 
-    stats=None
-    with open(input.name) as input_f:
-        args.bilingual=input_f
-        stats=train_fluency_filter(args)
-        input_f.seek(0)
+    # Build negative samples for train
+    noisy_target_tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
+    total_size, _, good_sentences, wrong_sentences = build_noisy_set(
+            args.parallel_train,
+            args.wrong_examples_file, args.tl_word_freqs,
+            noisy_target_tokenizer)
 
-        # Shuffle and get length ratio
-        noisy_target_tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
-        total_size, length_ratio, good_sentences, wrong_sentences = build_noisy_set(args.bilingual, count_input_lines//2, count_input_lines//2, args.wrong_examples_file, args.tl_word_freqs, noisy_target_tokenizer)
-        noisy_target_tokenizer.close()
-    os.remove(input.name)
-
-    args.length_ratio = length_ratio
+    # Build negative samples for test
+    total_size_test, _, good_sentences_test, wrong_sentences_test = build_noisy_set(
+            args.parallel_test,
+            args.wrong_examples_file, args.tl_word_freqs,
+            noisy_target_tokenizer)
+    noisy_target_tokenizer.close()
 
     logging.info("Start training.")
 
-    # Use 90% of the input to train and 10% for test
-    if args.wrong_examples_file is not None:
-        good_examples = int(count_input_lines*0.9)
-        good_examples_test = int(count_input_lines*0.1)
-        wrong_examples = 0
-        with args.examples_file as file:
-            wrong_examples = sum(1 for line in file)
-        wrong_examples_test = min(good_examples_test, int(wrong_examples*0.1))
-    else:
-        good_examples = int(count_input_lines//2*0.9)
-        good_examples_test = int(count_input_lines//2*0.1)
-        wrong_examples = good_examples
-        wrong_examples_test = good_examples_test
-
     model = Model(args.model_dir)
-
     # Load spm and embeddings if already trained
     try:
         model.load_spm()
@@ -163,45 +128,43 @@ def perform_training(args):
     except:
         model.train_vocab(args.mono_train, args.processes)
 
+    # Use 90% of the input to train and 10% for dev
+    n_good = int(total_size//2*0.9)
+    n_good_dev = int(total_size//2*0.1)
+    n_wrong = n_good
+    n_wrong_dev = n_good_dev
+
+    logging.info("Loading parallel sentences into memory")
     # Read sentences from file
-    train_sentences = [[], [], []]
-    dev_sentences = [[], [], []]
-    i = 0
-    for good_line in good_sentences:
-        parts = good_line.split('\t')
-        if i < good_examples:
-            train_sentences[0].append(parts[0])
-            train_sentences[1].append(parts[1])
-            train_sentences[2].append(1)
-        else:
-            dev_sentences[0].append(parts[0])
-            dev_sentences[1].append(parts[1])
-            dev_sentences[2].append(1)
-        i += 1
-    i = 0
-    for wrong_line in wrong_sentences:
-        parts = wrong_line.split('\t')
-        if i < wrong_examples:
-            train_sentences[0].append(parts[0])
-            train_sentences[1].append(parts[1])
-            train_sentences[2].append(0)
-        else:
-            dev_sentences[0].append(parts[0])
-            dev_sentences[1].append(parts[1])
-            dev_sentences[2].append(0)
+    train_sentences = load_tuple_sentences(good_sentences, 1, n_good)
+    wrong_train = load_tuple_sentences(wrong_sentences, 0, n_wrong)
+    train_sentences[0].extend(wrong_train[0])
+    train_sentences[1].extend(wrong_train[1])
+    train_sentences[2].extend(wrong_train[2])
+
+    dev_sentences = load_tuple_sentences(good_sentences, 1, n_good_dev)
+    wrong_dev = load_tuple_sentences(wrong_sentences, 0, n_wrong_dev)
+    dev_sentences[0].extend(wrong_dev[0])
+    dev_sentences[1].extend(wrong_dev[1])
+    dev_sentences[2].extend(wrong_dev[2])
+
+    test_sentences = load_tuple_sentences(good_sentences, 1)
+    wrong_test = load_tuple_sentences(wrong_sentences, 0)
+    test_sentences[0].extend(wrong_test[0])
+    test_sentences[1].extend(wrong_test[1])
+    test_sentences[2].extend(wrong_test[2])
 
     model.train(train_sentences, dev_sentences)
 
     logging.info("End training.")
 
-    # Compute histogram for dev predictions
-    labels = dev_sentences[2]
-    prediction = model.predict(dev_sentences[0], dev_sentences[1])
+    # Compute histogram for test predictions
+    prediction = model.predict(test_sentences[0], test_sentences[1])
 
     pos = 0
     good = []
     wrong = []
-    labels = dev_sentences[2]
+    labels = test_sentences[2]
     for pred in prediction:
         if labels[pos] == 1:
             good.append(pred[0])
@@ -212,7 +175,7 @@ def perform_training(args):
     hgood  = np.histogram(good,  bins = np.arange(0, 1.1, 0.1))[0].tolist()
     hwrong = np.histogram(wrong, bins = np.arange(0, 1.1, 0.1))[0].tolist()
 
-    write_metadata(args, hgood, hwrong, stats)
+    write_metadata(args, hgood, hwrong, None)
     args.metadata.close()
 
     # Stats
