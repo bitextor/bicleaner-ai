@@ -3,6 +3,7 @@ from sklearn.metrics import f1_score, precision_score
 from tempfile import TemporaryFile, NamedTemporaryFile
 from multiprocessing import cpu_count
 from timeit import default_timer
+import tensorflow as tf
 import numpy as np
 import argparse
 import logging
@@ -80,6 +81,8 @@ def initialization():
     if args.seed is not None:
         np.random.seed(args.seed)
         random.seed(args.seed)
+        os.environ["PYTHONHASHSEED"] = str(args.seed)
+        tf.random.seed = args.seed
 
     args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
 
