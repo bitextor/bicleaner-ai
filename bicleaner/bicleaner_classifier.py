@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import tensorflow as tf
 import os
 import sys
 import logging
@@ -26,8 +27,11 @@ def initialization():
 
     # Validating & parsing arguments
     parser, groupO, _ = argument_parser()
-    groupO.add_argument('-b', '--block_size', type=int, default=10000, help="Sentence pairs per block")
     args = parser.parse_args()
+
+    # Set number of processes to be used by TensorFlow
+    tf.config.threading.set_intra_op_parallelism_threads(args.processes)
+    tf.config.threading.set_inter_op_parallelism_threads(args.processes)
 
     # Set up logging
     logging_setup(args)

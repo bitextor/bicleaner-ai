@@ -1,3 +1,4 @@
+from multiprocessing import cpu_count
 from tempfile import gettempdir
 import numpy as np
 import traceback
@@ -51,6 +52,8 @@ def argument_parser():
 
     groupO.add_argument("--scol", default=3, type=check_positive, help ="Source sentence column (starting in 1)")
     groupO.add_argument("--tcol", default=4, type=check_positive, help ="Target sentence column (starting in 1)")
+    groupO.add_argument('-b', '--block_size', type=int, default=1000, help="Sentence pairs per block")
+    groupO.add_argument('-p', '--processes', type=int, default=max(1, cpu_count()-1), help="Number of processes to use")
 
 
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
