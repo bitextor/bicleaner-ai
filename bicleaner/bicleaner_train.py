@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from sklearn.metrics import f1_score, precision_score
 from tempfile import TemporaryFile, NamedTemporaryFile
 from multiprocessing import cpu_count
 from timeit import default_timer
@@ -149,8 +150,8 @@ def perform_training(args):
     dev_sentences[1].extend(wrong_dev[1])
     dev_sentences[2].extend(wrong_dev[2])
 
-    test_sentences = load_tuple_sentences(good_sentences, 1)
-    wrong_test = load_tuple_sentences(wrong_sentences, 0)
+    test_sentences = load_tuple_sentences(good_sentences_test, 1)
+    wrong_test = load_tuple_sentences(wrong_sentences_test, 0)
     test_sentences[0].extend(wrong_test[0])
     test_sentences[1].extend(wrong_test[1])
     test_sentences[2].extend(wrong_test[2])
@@ -159,13 +160,17 @@ def perform_training(args):
 
     logging.info("End training.")
 
-    # Compute histogram for test predictions
+    # Compute predictions, precision and f1 in test
+    labels = test_sentences[2]
     prediction = model.predict(test_sentences[0], test_sentences[1])
+    y_pred = np.where(prediction >= 0.5, 1, 0)
+    logging.info("Test precision: {:.3f}".format(precision_score(labels, y_pred)))
+    logging.info("Test f1: {:.3f}".format(f1_score(labels, y_pred)))
 
+    # Compute histogram for test predictions
     pos = 0
     good = []
     wrong = []
-    labels = test_sentences[2]
     for pred in prediction:
         if labels[pos] == 1:
             good.append(pred[0])
