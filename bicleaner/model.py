@@ -54,11 +54,13 @@ class Model(object):
                 return self.settings["lr"]/1000
         self.settings["scheduler"] = scheduler
 
-    def predict(self, x1, x2):
+    def predict(self, x1, x2, batch_size=None):
         '''Predicts from sequence generator'''
+        if batch_size is None:
+            batch_size = self.settings["batch_size"]
         generator = TupleSentenceGenerator(
                         self.spm, shuffle=False,
-                        batch_size=self.settings["batch_size"],
+                        batch_size=batch_size,
                         maxlen=self.settings["maxlen"])
         generator.load((x1, x2, None))
         return self.model.predict(generator)

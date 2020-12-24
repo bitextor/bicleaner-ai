@@ -54,7 +54,7 @@ def argument_parser():
     groupO.add_argument("--tcol", default=4, type=check_positive, help ="Target sentence column (starting in 1)")
     groupO.add_argument('-b', '--block_size', type=int, default=1000, help="Sentence pairs per block")
     groupO.add_argument('-p', '--processes', type=int, default=max(1, cpu_count()-1), help="Number of processes to use")
-
+    groupO.add_argument('--batch_size', type=int, default=32, help="Sentence pairs per block")
 
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
     groupO.add_argument('-d', '--discarded_tus', type=argparse.FileType('w'), default=None, help="TSV file with discarded TUs. Discarded TUs by the classifier are written in this file in TSV file.")
@@ -218,7 +218,7 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
 def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     # Classify predictions
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
-        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl)
+        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl, args.batch_size)
     else:
         predictions = []
     p = iter(predictions)
