@@ -217,7 +217,10 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
 # Score a batch of sentences
 def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     # Classify predictions
-    predictions = args.clf.predict(buf_sent_sl, buf_sent_tl)
+    if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
+        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl)
+    else:
+        predictions = []
     p = iter(predictions)
 
     # Print sentences and scores to output
