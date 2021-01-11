@@ -27,7 +27,7 @@ class Model(object):
             "emb_trainable": False,
             "emb_epochs": 10,
             "window": 15,
-            "vocab_size": 16000,
+            "vocab_size": 32000,
             "batch_size": 1024,
             "maxlen": 100,
             "n_hidden": 200,
