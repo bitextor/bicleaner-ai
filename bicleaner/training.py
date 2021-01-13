@@ -1,8 +1,10 @@
+from tempfile import TemporaryFile, NamedTemporaryFile
+from fuzzywuzzy import process, fuzz
+from joblib import Parallel, delayed
 import logging
 import os
 import random
 import math
-from tempfile import TemporaryFile, NamedTemporaryFile
 import typing
 import fasttext
 
@@ -166,6 +168,50 @@ def shuffle_chars(input_file_path):
         noisy_file.flush()
         noisy_file.seek(0)    
     return noisy_file.name
+
+# Noise function from WMT20 winner, Acarcicek et al.
+def rand_fuzzy_neigh_noise(input, pos_ratio=1, rand_ratio=6, fuzzy_max=70, fuzzy_ratio=3, neighbour_mix=True):
+    src = []
+    trg = {}
+    for i, line in enumerate(input):
+        parts = line.rstrip("\n").split("\t")
+        src.append(parts[0])
+        trg[i] = parts[1]
+    reduce_sts = []
+    size = len(src)
+
+    def inner( pos_ratio, rand_ratio, fuzzy_max, fuzzy_ratio, neighbour_mix):
+        sts = [[], [], []]
+        for i in range(size):
+            for j in range(pos_ratio):
+                sts[0].append(src[i].strip())
+                sts[1].append(trg[i].strip())
+                sts[2].append(1)
+            for k in range(rand_ratio):
+                sts[0].append(src[random.randrange(1,size)].strip())
+                sts[1].append(trg[i].strip())
+                sts[2].append(0)
+            if fuzzy_ratio > 0:
+                explored = {i:trg[i] for i in random.sample(range(size), 200)}
+                matches = process.extract(trg[i], explored, scorer=fuzz.token_sort_ratio, limit=25)
+                m_index = [m[2] for m in matches if m[1]<fuzzy_max][:fuzzy_ratio]
+                for m in m_index:
+                    sts[0].append(src[i].strip())
+                    sts[1].append(trg[m].strip())
+                    sts[2].append(0)
+            if neighbour_mix and i <size-2 and i > 1:
+                sts[0].append(src[i].strip())
+                sts[1].append(trg[i+1].strip())
+                sts[2].append(0)
+                sts[0].append(src[i].strip())
+                sts[1].append(trg[i-1].strip())
+                sts[2].append(0)
+
+        return sts
+
+    #res = Parallel(n_jobs=4, require='sharedmem', batch_size=20)(delayed(inner)(i, pos_ratio, rand_ratio, fuzzy_max, fuzzy_ratio, neighbour_mix) for i in range(size))
+
+    return inner(pos_ratio, rand_ratio, fuzzy_max, fuzzy_ratio, neighbour_mix)
 
 # Random shuffle corpora to ensure fairness of training and estimates.
 def build_noisy_set(input, wrong_examples_file, double_linked_zipf_freqs=None, noisy_target_tokenizer=None):
