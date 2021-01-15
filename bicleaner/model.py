@@ -1,8 +1,10 @@
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
 from keras.models import load_model
+from sklearn.utils.class_weight import compute_class_weight
 from glove import Corpus, Glove
 import sentencepiece as sp
 import tensorflow as tf
+import numpy as np
 import logging
 
 try:
@@ -135,6 +137,9 @@ class Model(object):
         train_generator.load(train_set)
         steps_per_epoch = min(len(train_generator),
                               self.settings["steps_per_epoch"])
+        class_weight = compute_class_weight('balanced',
+                                            np.unique(train_generator.y),
+                                            train_generator.y)
 
         dev_generator = TupleSentenceGenerator(
                             self.spm, shuffle=True,
@@ -161,6 +166,6 @@ class Model(object):
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
                        callbacks=[earlystop, lr_schedule],
-                       class_weight={1:0.9, 0:0.1},
+                       class_weight=dict(enumerate(class_weight)),
                        verbose=1)
         self.model.save(model_filename)
