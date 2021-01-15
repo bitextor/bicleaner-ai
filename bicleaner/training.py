@@ -1,3 +1,5 @@
+from multiprocessing import Queue, Process, Value, cpu_count
+from heapq import heappush, heappop
 from tempfile import TemporaryFile, NamedTemporaryFile
 from fuzzywuzzy import process, fuzz
 from joblib import Parallel, delayed
@@ -11,9 +13,11 @@ import fasttext
 try:
     from .lm import DualLMFluencyFilter,LMType, DualLMStats
     from .util import shuffle_file
+    from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from lm import DualLMFluencyFilter,LMType, DualLMStats
     from util import shuffle_file
+    from tokenizer import Tokenizer
 
 
 def shuffle_lm_training_text(input: typing.TextIO,dev_size: int ) -> (str,str,str,str):
@@ -169,49 +173,74 @@ def shuffle_chars(input_file_path):
         noisy_file.seek(0)    
     return noisy_file.name
 
-# Noise function from WMT20 winner, Acarcicek et al.
-def rand_fuzzy_neigh_noise(input, pos_ratio=1, rand_ratio=6, fuzzy_max=70, fuzzy_ratio=3, neighbour_mix=True):
+# Generate negative and positive samples for a sentence pair
+def sentence_noise(i, src, trg, args):
+    size = len(src)
+    sts = []
+    src_strip = src[i].strip()
+    trg_strip = trg[i].strip()
+
+    # Positive samples
+    for j in range(args.pos_ratio):
+        sts.append(src_strip + "\t" + trg_strip+ "\t1")
+
+    # Random misalignment
+    for j in range(args.rand_ratio):
+        sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0")
+
+    # Frequence based noise
+    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
+    for j in range(args.freq_ratio):
+        t_toks = tokenizer.tokenize(trg[i])
+        replaced = add_freqency_replacement_noise_to_sentence(t_toks, args.tl_word_freqs)
+        sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
+
+    # Randomly omit words
+    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
+    for j in range(args.freq_ratio):
+        t_toks = tokenizer.tokenize(trg[i])
+        omitted = remove_words_randomly_from_sentence(t_toks)
+        sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
+
+    # Misalginment by fuzzy matching
+    if args.fuzzy_ratio > 0:
+        explored = {n:trg[n] for n in random.sample(range(size), min(1000, size))}
+        matches = process.extract(trg[i], explored, scorer=fuzz.token_sort_ratio, limit=25)
+        m_index = [m[2] for m in matches if m[1]<fuzzy_max][:fuzzy_ratio]
+        for m in m_index:
+            sts.append(src_strip + "\t" + trg[m].strip() + "\t0")
+
+    # Misalgniment with neighbour sentences
+    if args.neighbour_mix and i <size-2 and i > 1:
+        sts.append(src_strip + "\t" + trg[i+1].strip()+ "\t0")
+        sts.append(src_strip + "\t" + trg[i-1].strip()+ "\t0")
+
+    return sts
+
+# Parallel loop over input sentences to generate noise
+def build_noise(input, args):
     src = []
     trg = {}
+    # Read sentences into memory
     for i, line in enumerate(input):
         parts = line.rstrip("\n").split("\t")
         src.append(parts[0])
         trg[i] = parts[1]
-    reduce_sts = []
     size = len(src)
 
-    def inner( pos_ratio, rand_ratio, fuzzy_max, fuzzy_ratio, neighbour_mix):
-        sts = [[], [], []]
-        for i in range(size):
-            for j in range(pos_ratio):
-                sts[0].append(src[i].strip())
-                sts[1].append(trg[i].strip())
-                sts[2].append(1)
-            for k in range(rand_ratio):
-                sts[0].append(src[random.randrange(1,size)].strip())
-                sts[1].append(trg[i].strip())
-                sts[2].append(0)
-            if fuzzy_ratio > 0:
-                explored = {i:trg[i] for i in random.sample(range(size), 200)}
-                matches = process.extract(trg[i], explored, scorer=fuzz.token_sort_ratio, limit=25)
-                m_index = [m[2] for m in matches if m[1]<fuzzy_max][:fuzzy_ratio]
-                for m in m_index:
-                    sts[0].append(src[i].strip())
-                    sts[1].append(trg[m].strip())
-                    sts[2].append(0)
-            if neighbour_mix and i <size-2 and i > 1:
-                sts[0].append(src[i].strip())
-                sts[1].append(trg[i+1].strip())
-                sts[2].append(0)
-                sts[0].append(src[i].strip())
-                sts[1].append(trg[i-1].strip())
-                sts[2].append(0)
+    # Parallel loop
+    #res = Parallel(n_jobs=args.processes, batch_size=100)(delayed(sentence_noise)(i, src, trg, args) for i in range(size))
+    res = []
+    for i in range(size):
+        res.append(sentence_noise(i, src, trg, args))
 
-        return sts
+    # Reduce all in a file
+    output_file = NamedTemporaryFile(mode='w', delete=False)
+    for sts in res:
+        for line in sts:
+            output_file.write(line + '\n')
 
-    #res = Parallel(n_jobs=4, require='sharedmem', batch_size=20)(delayed(inner)(i, pos_ratio, rand_ratio, fuzzy_max, fuzzy_ratio, neighbour_mix) for i in range(size))
-
-    return inner(pos_ratio, rand_ratio, fuzzy_max, fuzzy_ratio, neighbour_mix)
+    return output_file.name
 
 # Random shuffle corpora to ensure fairness of training and estimates.
 def build_noisy_set(input, wrong_examples_file, double_linked_zipf_freqs=None, noisy_target_tokenizer=None):

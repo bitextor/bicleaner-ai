@@ -56,14 +56,13 @@ class TupleSentenceGenerator(keras.utils.Sequence):
         '''
 
         if isinstance(source, str):
-            print('\tLoading data from:',source)
             data = [[], [], []]
             with open(source, 'r') as file_:
                 for line in file_:
                     fields = line.split('\t')
-                    data[0].append(fields[1].strip())
-                    data[1].append(fields[2].strip())
-                    data[2].append(fields[0])
+                    data[0].append(fields[0].strip())
+                    data[1].append(fields[1].strip())
+                    data[2].append(fields[2].strip())
         else:
             data = source
 

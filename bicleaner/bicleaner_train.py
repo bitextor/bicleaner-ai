@@ -17,14 +17,14 @@ try:
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from .training import rand_fuzzy_neigh_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
+    from .training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from model import Model
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from training import rand_fuzzy_neigh_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
+    from training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from tokenizer import Tokenizer
 
 logging_level = 0
@@ -56,6 +56,14 @@ def initialization():
     groupO.add_argument('--disable_lang_ident', default=False, action='store_true', help="Don't apply features that use language detecting")
     groupO.add_argument('--disable_relative_paths', action='store_true', help="Don't use relative paths if they are in the same directory of model_file")
     groupO.add_argument('--seed', default=None, type=int, help="Seed for random number generation: by default, no seeed is used")
+
+    # Noise options
+    groupO.add_argument('--pos_ratio', default=1, type=int, help="Ratio of positive samples used to oversample on validation and test sets")
+    groupO.add_argument('--rand_ratio', default=3, type=int, help="Ratio of negative samples misaligned randomly")
+    groupO.add_argument('--womit_ratio', default=3, type=int, help="Ratio of negative samples misaligned by randomly omitting words")
+    groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence")
+    groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
+    groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
 
     #For LM filtering
     groupO.add_argument('--noisy_examples_file_sl', type=str, help="File with noisy text in the SL. These are used to estimate the perplexity of noisy text.")
@@ -114,16 +122,8 @@ def perform_training(args):
     train_porn_removal(args)
 
     logging.info("Building training set.")
-    train_sentences = rand_fuzzy_neigh_noise(args.parallel_train,
-                                             pos_ratio=1,
-                                             rand_ratio=6,
-                                             fuzzy_ratio=0,
-                                             fuzzy_max=60)
-    test_sentences = rand_fuzzy_neigh_noise(args.parallel_test,
-                                            pos_ratio=1,
-                                            rand_ratio=6,
-                                            fuzzy_ratio=0,
-                                            fuzzy_max=60)
+    train_sentences = build_noise(args.parallel_train, args)
+    test_sentences = build_noise(args.parallel_test, args)
     dev_sentences = test_sentences
 
     logging.info("Start training.")
@@ -141,6 +141,8 @@ def perform_training(args):
     logging.info("End training.")
 
     # Compute predictions, precision and f1 in test
+    #TODO sentences aren't loaded into memory anymore
+    # extract from sentence generator
     labels = test_sentences[2]
     prediction = model.predict(test_sentences[0], test_sentences[1])
     y_pred = np.where(prediction >= 0.5, 1, 0)

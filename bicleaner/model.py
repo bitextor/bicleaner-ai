@@ -161,5 +161,6 @@ class Model(object):
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
                        callbacks=[earlystop, lr_schedule],
+                       class_weight={1:0.9, 0:0.1},
                        verbose=1)
         self.model.save(model_filename)
