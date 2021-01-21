@@ -136,25 +136,16 @@ def perform_training(args):
     except:
         model.train_vocab(args.mono_train, args.processes)
 
-    model.train(train_sentences, dev_sentences)
+    y_true, y_pred = model.train(train_sentences, dev_sentences)
 
     logging.info("End training.")
-
-    # Compute predictions, precision and f1 in test
-    #TODO sentences aren't loaded into memory anymore
-    # extract from sentence generator
-    labels = test_sentences[2]
-    prediction = model.predict(test_sentences[0], test_sentences[1])
-    y_pred = np.where(prediction >= 0.5, 1, 0)
-    logging.info("Test precision: {:.3f}".format(precision_score(labels, y_pred)))
-    logging.info("Test f1: {:.3f}".format(f1_score(labels, y_pred)))
 
     # Compute histogram for test predictions
     pos = 0
     good = []
     wrong = []
-    for pred in prediction:
-        if labels[pos] == 1:
+    for pred in y_pred:
+        if y_true[pos] == 1:
             good.append(pred[0])
         else:
             wrong.append(pred[0])

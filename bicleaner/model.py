@@ -1,6 +1,6 @@
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
+from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from keras.models import load_model
-from sklearn.utils.class_weight import compute_class_weight
 from glove import Corpus, Glove
 import sentencepiece as sp
 import tensorflow as tf
@@ -44,13 +44,13 @@ class Model(object):
             "clipnorm": 0.5,
         }
         def scheduler(epoch):
-            if epoch < 15:
+            if epoch < 10:
                 return self.settings["lr"]
-            elif epoch < 30:
+            elif epoch < 20:
                 return self.settings["lr"]/2
-            elif epoch < 50:
+            elif epoch < 30:
                 return self.settings["lr"]/10
-            elif epoch < 75:
+            elif epoch < 50:
                 return self.settings["lr"]/100
             else:
                 return self.settings["lr"]/1000
@@ -137,21 +137,20 @@ class Model(object):
         train_generator.load(train_set)
         steps_per_epoch = min(len(train_generator),
                               self.settings["steps_per_epoch"])
-        class_weight = compute_class_weight('balanced',
-                                            np.unique(train_generator.y),
-                                            train_generator.y)
 
         dev_generator = TupleSentenceGenerator(
-                            self.spm, shuffle=True,
+                            self.spm, shuffle=False,
                             batch_size=self.settings["batch_size"],
                             maxlen=self.settings["maxlen"])
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/model.h5'
         checkpoint = ModelCheckpoint(model_filename,
-                                     monitor='val_accuracy',
+                                     monitor='val_f1',
+                                     mode='max',
                                      save_best_only='True')
-        earlystop = EarlyStopping(monitor='val_accuracy',
+        earlystop = EarlyStopping(monitor='val_f1',
+                                  mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
         lr_schedule = LearningRateScheduler(self.settings["scheduler"])
@@ -166,6 +165,14 @@ class Model(object):
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
                        callbacks=[earlystop, lr_schedule],
-                       class_weight=dict(enumerate(class_weight)),
                        verbose=1)
         self.model.save(model_filename)
+
+        y_true = dev_generator.y
+        y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
+        logging.info("Dev precision: {:.3f}".format(precision_score(y_true, y_pred)))
+        logging.info("Dev recall: {:.3f}".format(precision_score(y_true, y_pred)))
+        logging.info("Dev f1: {:.3f}".format(f1_score(y_true, y_pred)))
+        logging.info("Dev mcc: {:.3f}".format(matthews_corrcoef(y_true, y_pred)))
+
+        return y_true, y_pred

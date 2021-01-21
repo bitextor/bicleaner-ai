@@ -7,11 +7,9 @@ The MIT License (MIT)
 Copyright (C) 2016-2020 ExplosionAI GmbH, 2016 spaCy GmbH, 2015 Matthew Honnibal
 '''
 
-from keras.metrics import TruePositives
+from keras.metrics import Precision, Recall
 from keras import layers, Model, models, optimizers
 from keras import backend as K
-import sklearn.metrics.matthews_corrcoef as mcc
-import sklearn.metrics.f1_score as f1
 import numpy as np
 
 
@@ -80,7 +78,7 @@ def build_model(vectors, settings):
     model.compile(
         optimizer=optimizers.Adam(lr=settings["lr"], clipnorm=settings["clipnorm"]),
         loss=settings["loss"],
-        metrics=[TruePositives(name='tp'), f1, mcc],
+        metrics=[Precision(name='p'), Recall(name='r'), f1],
         experimental_run_tf_function=False,
     )
 
@@ -128,6 +126,17 @@ def normalizer(axis):
 
 def sum_word(x):
     return K.sum(x, axis=1)
+
+
+def f1(y_true, y_pred): #taken from old keras source code
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives+K.epsilon())
+    recall = true_positives / (possible_positives+K.epsilon())
+    f1_val = 2*(precision*recall) / (precision+recall+K.epsilon())
+    return f1_val
+
 
 def test_build_model():
     vectors = np.ndarray((100, 8), dtype="float32")
