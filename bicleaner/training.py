@@ -205,7 +205,9 @@ def sentence_noise(i, src, trg, args):
     # Misalginment by fuzzy matching
     if args.fuzzy_ratio > 0:
         explored = {n:trg[n] for n in random.sample(range(size), min(1000, size))}
-        matches = process.extract(trg[i], explored, scorer=fuzz.token_sort_ratio, limit=25)
+        matches = process.extract(trg[i], explored,
+                                  scorer=fuzz.token_sort_ratio,
+                                  limit=25)
         m_index = [m[2] for m in matches if m[1]<fuzzy_max][:fuzzy_ratio]
         for m in m_index:
             sts.append(src_strip + "\t" + trg[m].strip() + "\t0")
@@ -216,6 +218,74 @@ def sentence_noise(i, src, trg, args):
         sts.append(src_strip + "\t" + trg[i-1].strip()+ "\t0")
 
     return sts
+
+# Take block number from the queue and generate noise for that block
+def worker_process(num, src, trg, jobs_queue, output_queue, args):
+    nlines = len(src)
+
+    while True:
+        job = jobs_queue.get()
+
+        if job is not None:
+            logging.debug("Job {0}".format(job.__repr__()))
+
+            # Generate noise for each sentence in the block
+            output = []
+            for i in range(job, min(job+args.block_size, nlines)):
+                output.extend(sentence_noise(i, src, trg, args))
+
+            output_file = NamedTemporaryFile('w+', delete=False)
+            for j in output:
+                output_file.write(j + '\n')
+            output_file.close()
+            output_queue.put((job,output_file.name))
+        else:
+            logging.debug(f"Exiting worker {num}")
+            break
+
+# Merges all the temporary files from the workers
+def reduce_process(output_queue, output_file, block_size):
+    h = []
+    last_block = 0
+    while True:
+        logging.debug("Reduce: heap status {0}".format(h.__str__()))
+        while len(h) > 0 and h[0][0] == last_block:
+            nblock, filein_name = heappop(h)
+            last_block += block_size
+
+            with open(filein_name, 'r') as filein:
+                for i in filein:
+                    output_file.write(i)
+                filein.close()
+            os.unlink(filein_name)
+
+        job = output_queue.get()
+        if job is not None:
+            nblock, filein_name = job
+            heappush(h, (nblock, filein_name))
+        else:
+            logging.debug("Exiting reduce loop")
+            break
+
+    if len(h) > 0:
+        logging.debug(f"Still elements in heap: {h}")
+
+    while len(h) > 0 and h[0][0] == last_block:
+        nblock, filein_name = heappop(h)
+        last_block += block_size
+
+        with open(filein_name, 'r') as filein:
+            for i in filein:
+                output_file.write(i)
+            filein.close()
+
+        os.unlink(filein_name)
+
+    if len(h) != 0:
+        logging.error("The queue is not empty and it should!")
+
+    output_file.close()
+
 
 # Parallel loop over input sentences to generate noise
 def build_noise(input, args):
@@ -228,17 +298,42 @@ def build_noise(input, args):
         trg[i] = parts[1]
     size = len(src)
 
-    # Parallel loop
-    #res = Parallel(n_jobs=args.processes, batch_size=100)(delayed(sentence_noise)(i, src, trg, args) for i in range(size))
-    res = []
-    for i in range(size):
-        res.append(sentence_noise(i, src, trg, args))
+    logging.debug("Running {0} workers at {1} rows per block".format(args.processes, args.block_size))
+    process_count = max(1, args.processes)
+    maxsize = 1000 * process_count
+    output_queue = Queue(maxsize = maxsize)
+    worker_count = process_count
+    output_file = NamedTemporaryFile('w+', delete=False)
 
-    # Reduce all in a file
-    output_file = NamedTemporaryFile(mode='w', delete=False)
-    for sts in res:
-        for line in sts:
-            output_file.write(line + '\n')
+    # Start reducer
+    reduce = Process(target = reduce_process,
+                     args   = (output_queue, output_file, args.block_size))
+    reduce.start()
+
+    # Start workers
+    jobs_queue = Queue(maxsize = maxsize)
+    workers = []
+    for i in range(worker_count):
+        worker = Process(target = worker_process,
+                         args   = (i, src, trg, jobs_queue, output_queue, args))
+        worker.daemon = True # dies with the parent process
+        worker.start()
+        workers.append(worker)
+
+    # Map jobs
+    for i in range(0, size, args.block_size):
+        jobs_queue.put(i)
+
+    # Worker termination
+    for _ in workers:
+        jobs_queue.put(None)
+
+    for w in workers:
+        w.join()
+
+    # Reducer termination
+    output_queue.put(None)
+    reduce.join()
 
     return output_file.name
 

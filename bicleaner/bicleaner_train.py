@@ -49,7 +49,7 @@ def initialization():
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
-    groupO.add_argument('-b', '--block_size', type=check_positive, default=10000, help="Sentence pairs per block")
+    groupO.add_argument('-b', '--block_size', type=check_positive, default=1000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, default=0, help="Which GPU use")
     groupO.add_argument('--wrong_examples_file', type=argparse.FileType('r'), default=None, help="File with wrong examples extracted to replace the synthetic examples from method used by default")
@@ -125,6 +125,8 @@ def perform_training(args):
     train_sentences = build_noise(args.parallel_train, args)
     test_sentences = build_noise(args.parallel_test, args)
     dev_sentences = test_sentences
+    logging.debug(f"Training sentences file: {train_sentences}")
+    logging.debug(f"Development sentences file: {dev_sentences}")
 
     logging.info("Start training.")
 
