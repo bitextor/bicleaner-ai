@@ -140,6 +140,8 @@ def perform_training(args):
 
     y_true, y_pred = model.train(train_sentences, dev_sentences)
 
+    os.unlink(train_sentences)
+    os.unlink(dev_sentences)
     logging.info("End training.")
 
     # Compute histogram for test predictions
