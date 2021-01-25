@@ -7,8 +7,9 @@ The MIT License (MIT)
 Copyright (C) 2016-2020 ExplosionAI GmbH, 2016 spaCy GmbH, 2015 Matthew Honnibal
 '''
 
+from keras.optimizers import Adam
 from keras.metrics import Precision, Recall
-from keras import layers, Model, models, optimizers
+from keras import layers, Model, models
 from keras import backend as K
 import numpy as np
 
@@ -76,7 +77,7 @@ def build_model(vectors, settings):
     model = Model([input1, input2], out)
 
     model.compile(
-        optimizer=optimizers.Adam(lr=settings["lr"], clipnorm=settings["clipnorm"]),
+        optimizer=Adam(learning_rate=settings["scheduler"], clipnorm=settings["clipnorm"]),
         loss=settings["loss"],
         metrics=[Precision(name='p'), Recall(name='r'), f1],
         experimental_run_tf_function=False,

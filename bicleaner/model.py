@@ -1,4 +1,5 @@
-from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
+from keras.optimizers.schedules import InverseTimeDecay
+from keras.callbacks import EarlyStopping
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from keras.models import load_model
 from glove import Corpus, Glove
@@ -43,17 +44,9 @@ class Model(object):
             "lr": 0.005,
             "clipnorm": 0.5,
         }
-        def scheduler(epoch):
-            if epoch < 10:
-                return self.settings["lr"]
-            elif epoch < 20:
-                return self.settings["lr"]/2
-            elif epoch < 30:
-                return self.settings["lr"]/10
-            elif epoch < 50:
-                return self.settings["lr"]/100
-            else:
-                return self.settings["lr"]/1000
+        scheduler = InverseTimeDecay(self.settings["lr"],
+                                     decay_steps=32.0,
+                                     decay_rate=0.1)
         self.settings["scheduler"] = scheduler
 
     def predict(self, x1, x2, batch_size=None):
@@ -145,15 +138,10 @@ class Model(object):
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/model.h5'
-        checkpoint = ModelCheckpoint(model_filename,
-                                     monitor='val_f1',
-                                     mode='max',
-                                     save_best_only='True')
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
-        lr_schedule = LearningRateScheduler(self.settings["scheduler"])
 
         logging.info("Training neural classifier")
 
@@ -164,7 +152,7 @@ class Model(object):
                        epochs=self.settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
-                       callbacks=[earlystop, lr_schedule],
+                       callbacks=[earlystop],
                        verbose=1)
         self.model.save(model_filename)
 
