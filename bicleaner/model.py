@@ -159,7 +159,7 @@ class Model(object):
         y_true = dev_generator.y
         y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
         logging.info("Dev precision: {:.3f}".format(precision_score(y_true, y_pred)))
-        logging.info("Dev recall: {:.3f}".format(precision_score(y_true, y_pred)))
+        logging.info("Dev recall: {:.3f}".format(recall_score(y_true, y_pred)))
         logging.info("Dev f1: {:.3f}".format(f1_score(y_true, y_pred)))
         logging.info("Dev mcc: {:.3f}".format(matthews_corrcoef(y_true, y_pred)))
 
