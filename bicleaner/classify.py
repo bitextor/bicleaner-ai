@@ -5,7 +5,6 @@ import traceback
 import argparse
 import fasttext
 import logging
-import joblib
 import yaml
 import sys
 import os
@@ -13,12 +12,10 @@ import os
 #Allows to load modules while inside or outside the package
 try:
     from .model import Model
-    from .word_freqs_zipf import WordZipfFreqDist
     from .bicleaner_hardrules import wrong_tu
     from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup
 except (ImportError, SystemError):
     from model import Model
-    from word_freqs_zipf import WordZipfFreqDist
     from bicleaner_hardrules import wrong_tu
     from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup
 
@@ -78,7 +75,7 @@ def argument_parser():
     return parser, groupO, groupL
 
 
-# Load metadata, classifier, dictionaries, wordfreqs, lm_filter and porn_removal
+# Load metadata, classifier, lm_filter and porn_removal
 def load_metadata(args, parser):
     try:
         # Load YAML
@@ -97,22 +94,6 @@ def load_metadata(args, parser):
         # Load classifier
         args.clf = Model(yamlpath)
         args.clf.load()
-
-        # Load wordfreqs
-        try:
-            args.sl_word_freqs = WordZipfFreqDist( os.path.join( yamlpath, metadata_yaml["source_word_freqs"]))
-        except:
-            try:
-                args.sl_word_freqs = WordZipfFreqDist(metadata_yaml["source_word_freqs"])
-            except:
-                args.sl_word_freqs = None
-        try:
-            args.tl_word_freqs = WordZipfFreqDist( os.path.join( yamlpath , metadata_yaml["target_word_freqs"]))
-        except:
-            try:
-                args.tl_word_freqs = WordZipfFreqDist(metadata_yaml["target_word_freqs"])
-            except:
-                args.tl_word_freqs = None
 
         if "disable_lang_ident" in metadata_yaml:
             args.disable_lang_ident = metadata_yaml["disable_lang_ident"]
