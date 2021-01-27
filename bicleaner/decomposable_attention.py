@@ -29,7 +29,7 @@ def build_model(vectors, settings):
     b = embed(input2)
 
     # step 1: attend
-    F = create_feedforward(nr_hidden)
+    F = create_feedforward(nr_hidden, dropout=settings["dropout"])
     att_weights = layers.dot([F(a), F(b)], axes=-1)
 
     G = create_feedforward(nr_hidden)
@@ -67,7 +67,7 @@ def build_model(vectors, settings):
         v1_sum = layers.Lambda(sum_word)(v1)
         concat = v1_sum
 
-    H = create_feedforward(nr_hidden)
+    H = create_feedforward(nr_hidden, dropout=settings["dropout"])
     out = H(concat)
     if settings['loss'] == 'categorical_crossentropy':
         out = layers.Dense(nr_class, activation="softmax")(out)
