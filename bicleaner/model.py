@@ -9,10 +9,10 @@ import numpy as np
 import logging
 
 try:
-    from .decomposable_attention import build_model
+    from .decomposable_attention import build_model, f1
     from .datagen import TupleSentenceGenerator
 except (SystemError, ImportError):
-    from decomposable_attention import build_model
+    from decomposable_attention import build_model, f1
     from datagen import TupleSentenceGenerator
 
 class Model(object):
@@ -79,7 +79,8 @@ class Model(object):
         '''Loads the whole model'''
         self.load_spm()
         logging.info("Loading neural classifier")
-        self.model = load_model(self.dir + '/model.h5')
+        deps = { 'f1': f1 }
+        self.model = load_model(self.dir + '/model.h5', custom_objects=deps)
 
     def train_vocab(self, monolingual, threads):
         '''Trains SentencePiece model and embeddings with Glove'''
