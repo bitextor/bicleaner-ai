@@ -1,5 +1,6 @@
 from multiprocessing import cpu_count
 from tempfile import gettempdir
+import tensorflow as tf
 import numpy as np
 import traceback
 import argparse
@@ -8,6 +9,7 @@ import logging
 import yaml
 import sys
 import os
+import gc
 
 #Allows to load modules while inside or outside the package
 try:
@@ -188,6 +190,11 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
             buf_sent_sl = []
             buf_sent_tl = []
             buf_score = []
+
+        # Avoid memory not beeing freed too late
+        if (nline % 1e6) == 0:
+            gc.collect()
+            tf.keras.backend.clear_session()
 
     # Score remaining sentences
     if len(buf_sent) > 0:
