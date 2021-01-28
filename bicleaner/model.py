@@ -37,7 +37,7 @@ class Model(object):
             "dropout": 0.2,
             "n_classes": 1,
             "entail_dir": "both",
-            "epochs": 100,
+            "epochs": 200,
             "steps_per_epoch": 128,
             "patience": 20,
             "loss": "binary_crossentropy",
