@@ -105,13 +105,13 @@ def create_embedding(vectors, max_length, projected_dim, trainable=False):
     )
 
 
-def create_feedforward(num_units=200, activation="relu", dropout_rate=0.2):
+def create_feedforward(num_units=200, activation="relu", dropout=0.2):
     return models.Sequential(
         [
             layers.Dense(num_units, activation=activation),
-            layers.Dropout(dropout_rate),
+            layers.Dropout(dropout),
             layers.Dense(num_units, activation=activation),
-            layers.Dropout(dropout_rate),
+            layers.Dropout(dropout),
         ]
     )
 
