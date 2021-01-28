@@ -208,7 +208,7 @@ def sentence_noise(i, src, trg, args):
         matches = process.extract(trg[i], explored,
                                   scorer=fuzz.token_sort_ratio,
                                   limit=25)
-        m_index = [m[2] for m in matches if m[1]<fuzzy_max][:fuzzy_ratio]
+        m_index = [m[2] for m in matches if m[1]<70][:args.fuzzy_ratio]
         for m in m_index:
             sts.append(src_strip + "\t" + trg[m].strip() + "\t0")
 
