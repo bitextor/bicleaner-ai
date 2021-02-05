@@ -204,7 +204,7 @@ def sentence_noise(i, src, trg, args):
 
     # Misalginment by fuzzy matching
     if args.fuzzy_ratio > 0:
-        explored = {n:trg[n] for n in random.sample(range(size), min(1000, size))}
+        explored = {n:trg[n] for n in random.sample(range(size), min(3000, size))}
         matches = process.extract(trg[i], explored,
                                   scorer=fuzz.token_sort_ratio,
                                   limit=25)

@@ -8,7 +8,7 @@ class TupleSentenceGenerator(keras.utils.Sequence):
     Generates batches of tuples of sentences and its labels if they have
     '''
 
-    def __init__(self, sentencepiece_model,
+    def __init__(self, tokenizer,
             batch_size=64, maxlen=50, shuffle=False):
         self.batch_size = batch_size
         self.maxlen = maxlen
@@ -18,8 +18,7 @@ class TupleSentenceGenerator(keras.utils.Sequence):
         self.x1 = None
         self.x2 = None
         self.y = None
-
-        self.spm = sentencepiece_model
+        self.tok = tokenizer
 
 
     def __len__(self):
@@ -66,11 +65,11 @@ class TupleSentenceGenerator(keras.utils.Sequence):
         else:
             data = source
 
-        self.x1 = pad_sequences(self.spm.encode(data[0]),
+        self.x1 = pad_sequences(self.__tokenize(data[0]),
                                 padding='post',
                                 truncating='post',
                                 maxlen=self.maxlen)
-        self.x2 = pad_sequences(self.spm.encode(data[1]),
+        self.x2 = pad_sequences(self.__tokenize(data[1]),
                                 padding='post',
                                 truncating='post',
                                 maxlen=self.maxlen)
@@ -82,3 +81,90 @@ class TupleSentenceGenerator(keras.utils.Sequence):
         self.index = np.arange(0, self.num_samples)
         if self.shuffle:
             np.random.shuffle(self.index) # Preventive shuffle in case data comes ordered
+
+    def __tokenize(self, data):
+        '''Tokenizer wrapper function'''
+        if isinstance(self.tok, sp.SentencePieceProcessor):
+            return self.tok.encode(data)
+        elif isinstance(self.tok, transformers.PreTrainedTokenizer):
+            return self.tokenizer(data)['input_ids']
+        else:
+            return self.tokenize(data)
+
+
+class ConcatSentenceGenerator(keras.utils.Sequence):
+    '''
+    Generates batches of concatenated sentences and its labels if they have
+    This generator is designed to be used with Transformers library
+    '''
+
+    def __init__(self, tokenizer,
+            batch_size=64, maxlen=100, shuffle=False):
+        self.batch_size = batch_size
+        self.maxlen = maxlen
+        self.shuffle = shuffle
+        self.num_samples = 0
+        self.index = None
+        self.x = None
+        self.y = None
+        self.tok = tokenizer
+
+    def __len__(self):
+        '''
+        Length of epochs
+        '''
+        return int(np.ceil(self.x.shape[0] / self.batch_size))
+
+    #TODO investigate how to return batches reading from stdin
+    def __getitem__(self, index):
+        '''
+        Return a batch of sentences
+        '''
+        # Avoid out of range when last batch smaller than batch_size
+        if len(self)-1 == index:
+            end = None
+        else:
+            end = (index+1)*self.batch_size
+        start = index*self.batch_size
+        indexes = self.index[start:end]
+
+        return self.x[indexes], self.y[indexes]
+
+    def on_epoch_end(self):
+        'Shuffle indexes after each epoch'
+        if self.shuffle:
+            np.random.shuffle(self.index)
+
+    def load(self, source):
+        '''
+        Load sentences and encode to index numbers
+        If source is a string it is considered a file,
+        if it is a list is considered [text1_sentences, text2_sentences, tags]
+        '''
+
+        if isinstance(source, str):
+            data = [[], [], []]
+            with open(source, 'r') as file_:
+                for line in file_:
+                    fields = line.split('\t')
+                    sent_a = self.tok.tokenize(fields[0])
+                    sent_b = self.tok.tokenize(fields[1])
+                    data[0].append(self.tok.build_inputs_with_special_tokens(
+                                        sent_a, sent_b))
+                    data[1].append(fields[2].strip())
+        else:
+            data = source
+
+        self.x = pad_sequences(data[0],
+                               padding='post',
+                               truncating='post',
+                               maxlen=self.maxlen)
+        self.num_samples = self.x.shape[0]
+        if data[1] is None: #TODO set y to None instead of zeros for inference
+            self.y = np.zeros(self.num_samples)
+        else:
+            self.y = np.array(data[2], dtype=int)
+        self.index = np.arange(0, self.num_samples)
+        if self.shuffle:
+            np.random.shuffle(self.index) # Preventive shuffle in case data comes ordered
+

@@ -1,3 +1,4 @@
+from transformers import TFAutoModelForSequenceClassification, AutoTokenizer
 from keras.optimizers.schedules import InverseTimeDecay
 from keras.callbacks import EarlyStopping
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
@@ -10,10 +11,10 @@ import logging
 
 try:
     from .decomposable_attention import build_model, f1
-    from .datagen import TupleSentenceGenerator
+    from .datagen import TupleSentenceGenerator, ConcatSentenceGenerator
 except (SystemError, ImportError):
     from decomposable_attention import build_model, f1
-    from datagen import TupleSentenceGenerator
+    from datagen import TupleSentenceGenerator, ConcatSentenceGenerator
 
 class Model(object):
 
@@ -159,9 +160,92 @@ class Model(object):
 
         y_true = dev_generator.y
         y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
-        logging.info("Dev precision: {:.3f}".format(precision_score(y_true, y_pred)))
-        logging.info("Dev recall: {:.3f}".format(recall_score(y_true, y_pred)))
-        logging.info("Dev f1: {:.3f}".format(f1_score(y_true, y_pred)))
-        logging.info("Dev mcc: {:.3f}".format(matthews_corrcoef(y_true, y_pred)))
+        logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
 
         return y_true, y_pred
+
+class Transformer(object):
+    def __init__(self, directory):
+        self.dir = directory
+        self.model = None
+
+        self.settings = {
+            "model": 'roberta-base',
+            "batch_size": 8,
+            "n_classes": 1,
+            "epochs": 10,
+            "steps_per_epoch": 128,
+            "patience": 5,
+            "loss": "binary_crossentropy",
+            "lr": 5e6,
+            "clipnorm": 1.0,
+        }
+        scheduler = InverseTimeDecay(self.settings["lr"],
+                                     decay_steps=32.0,
+                                     decay_rate=0.1)
+        self.settings["scheduler"] = scheduler
+        self.tokenizer = AutoTokenizer.from_pretrained(self.settings["model"])
+
+    def build_dataset(self, filename):
+        ''' Read a file into a TFDataset '''
+        data = [[], [], []]
+        with open(filename, 'r') as file_:
+            for line in file_:
+                fields = line.split('\t')
+                data[0].append(fields[0].strip())
+                data[1].append(fields[1].strip())
+                data[2].append(int(fields[2].strip()))
+        # Give the sentences in separate arguments
+        # so the tokenizer adds the corresponding special tokens
+        sentences = self.tokenizer(data[0], data[1],
+                                      padding=True,
+                                      truncation=True)
+
+        return tf.data.Dataset.from_tensor_slices((dict(sentences),
+                                                 data[2]))
+
+    def train(self, train_set, dev_set):
+        logging.info("Vectorizing training set")
+
+        train_dataset = self.build_dataset(train_set)
+        train_dataset = train_dataset.shuffle(
+                len(train_dataset)).batch(self.settings["batch_size"])
+        steps_per_epoch = min(len(train_dataset),
+                              self.settings["steps_per_epoch"])
+
+        dev_dataset = self.build_dataset(dev_set)
+        dev_dataset.batch(self.settings["batch_size"])
+
+        model_filename = self.dir + '/model.h5'
+        earlystop = EarlyStopping(monitor='val_f1',
+                                  mode='max',
+                                  patience=self.settings["patience"],
+                                  restore_best_weights=True)
+
+        logging.info("Training neural classifier")
+
+        self.model = TFAutoModelForSequenceClassification.from_pretrained(
+                self.settings['model'])
+        self.model.compile(optimizer='adam', loss='binary_crossentropy')
+        self.model.summary()
+        self.model.fit(train_dataset,
+                       epochs=self.settings["epochs"],
+                       steps_per_epoch=steps_per_epoch,
+                       validation_data=dev_dataset,
+                       callbacks=[earlystop],
+                       verbose=1)
+        self.model.save(model_filename)
+
+        y_true = np.array(list(dev_dataset.map(lambda x,y: y).as_numpy_iterator()))
+        y_pred = np.where(self.model.predict(dev_dataset) >= 0.5, 1, 0)
+        logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
+
+        return y_true, y_pred
+
+
