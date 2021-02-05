@@ -17,14 +17,14 @@ try:
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from .training import build_noisy_set, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
+    from .training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from model import Model
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from training import build_noisy_set, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
+    from training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from tokenizer import Tokenizer
 
 logging_level = 0
@@ -49,13 +49,21 @@ def initialization():
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
-    groupO.add_argument('-b', '--block_size', type=check_positive, default=10000, help="Sentence pairs per block")
+    groupO.add_argument('-b', '--block_size', type=check_positive, default=1000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, default=0, help="Which GPU use")
     groupO.add_argument('--wrong_examples_file', type=argparse.FileType('r'), default=None, help="File with wrong examples extracted to replace the synthetic examples from method used by default")
     groupO.add_argument('--disable_lang_ident', default=False, action='store_true', help="Don't apply features that use language detecting")
     groupO.add_argument('--disable_relative_paths', action='store_true', help="Don't use relative paths if they are in the same directory of model_file")
     groupO.add_argument('--seed', default=None, type=int, help="Seed for random number generation: by default, no seeed is used")
+
+    # Noise options
+    groupO.add_argument('--pos_ratio', default=1, type=int, help="Ratio of positive samples used to oversample on validation and test sets")
+    groupO.add_argument('--rand_ratio', default=3, type=int, help="Ratio of negative samples misaligned randomly")
+    groupO.add_argument('--womit_ratio', default=3, type=int, help="Ratio of negative samples misaligned by randomly omitting words")
+    groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence")
+    groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
+    groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
 
     #For LM filtering
     groupO.add_argument('--noisy_examples_file_sl', type=str, help="File with noisy text in the SL. These are used to estimate the perplexity of noisy text.")
@@ -113,20 +121,12 @@ def perform_training(args):
     # Train porn removal classifier
     train_porn_removal(args)
 
-    # Build negative samples for train
     logging.info("Building training set.")
-    noisy_target_tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
-    total_size, _, good_sentences, wrong_sentences = build_noisy_set(
-            args.parallel_train,
-            args.wrong_examples_file, args.tl_word_freqs,
-            noisy_target_tokenizer)
-
-    # Build negative samples for test
-    total_size_test, _, good_sentences_test, wrong_sentences_test = build_noisy_set(
-            args.parallel_test,
-            args.wrong_examples_file, args.tl_word_freqs,
-            noisy_target_tokenizer)
-    noisy_target_tokenizer.close()
+    train_sentences = build_noise(args.parallel_train, args)
+    test_sentences = build_noise(args.parallel_test, args)
+    dev_sentences = test_sentences
+    logging.debug(f"Training sentences file: {train_sentences}")
+    logging.debug(f"Development sentences file: {dev_sentences}")
 
     logging.info("Start training.")
 
@@ -138,49 +138,18 @@ def perform_training(args):
     except:
         model.train_vocab(args.mono_train, args.processes)
 
-    # Use 90% of the input to train and 10% for dev
-    n_good = int(total_size//2*0.9)
-    n_good_dev = int(total_size//2*0.1)
-    n_wrong = n_good
-    n_wrong_dev = n_good_dev
+    y_true, y_pred = model.train(train_sentences, dev_sentences)
 
-    logging.info("Loading parallel sentences into memory")
-    # Read sentences from file
-    train_sentences = load_tuple_sentences(good_sentences, 1, n_good)
-    wrong_train = load_tuple_sentences(wrong_sentences, 0, n_wrong)
-    train_sentences[0].extend(wrong_train[0])
-    train_sentences[1].extend(wrong_train[1])
-    train_sentences[2].extend(wrong_train[2])
-
-    dev_sentences = load_tuple_sentences(good_sentences, 1, n_good_dev)
-    wrong_dev = load_tuple_sentences(wrong_sentences, 0, n_wrong_dev)
-    dev_sentences[0].extend(wrong_dev[0])
-    dev_sentences[1].extend(wrong_dev[1])
-    dev_sentences[2].extend(wrong_dev[2])
-
-    test_sentences = load_tuple_sentences(good_sentences_test, 1)
-    wrong_test = load_tuple_sentences(wrong_sentences_test, 0)
-    test_sentences[0].extend(wrong_test[0])
-    test_sentences[1].extend(wrong_test[1])
-    test_sentences[2].extend(wrong_test[2])
-
-    model.train(train_sentences, dev_sentences)
-
+    os.unlink(train_sentences)
+    os.unlink(dev_sentences)
     logging.info("End training.")
-
-    # Compute predictions, precision and f1 in test
-    labels = test_sentences[2]
-    prediction = model.predict(test_sentences[0], test_sentences[1])
-    y_pred = np.where(prediction >= 0.5, 1, 0)
-    logging.info("Test precision: {:.3f}".format(precision_score(labels, y_pred)))
-    logging.info("Test f1: {:.3f}".format(f1_score(labels, y_pred)))
 
     # Compute histogram for test predictions
     pos = 0
     good = []
     wrong = []
-    for pred in prediction:
-        if labels[pos] == 1:
+    for pred in y_pred:
+        if y_true[pos] == 1:
             good.append(pred[0])
         else:
             wrong.append(pred[0])

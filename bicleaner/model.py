@@ -1,15 +1,18 @@
-from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
+from keras.optimizers.schedules import InverseTimeDecay
+from keras.callbacks import EarlyStopping
+from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from keras.models import load_model
 from glove import Corpus, Glove
 import sentencepiece as sp
 import tensorflow as tf
+import numpy as np
 import logging
 
 try:
-    from .decomposable_attention import build_model
+    from .decomposable_attention import build_model, f1
     from .datagen import TupleSentenceGenerator
 except (SystemError, ImportError):
-    from decomposable_attention import build_model
+    from decomposable_attention import build_model, f1
     from datagen import TupleSentenceGenerator
 
 class Model(object):
@@ -27,31 +30,23 @@ class Model(object):
             "emb_trainable": False,
             "emb_epochs": 10,
             "window": 15,
-            "vocab_size": 16000,
+            "vocab_size": 32000,
             "batch_size": 1024,
             "maxlen": 100,
             "n_hidden": 200,
             "dropout": 0.2,
             "n_classes": 1,
             "entail_dir": "both",
-            "epochs": 100,
+            "epochs": 200,
             "steps_per_epoch": 128,
             "patience": 20,
             "loss": "binary_crossentropy",
             "lr": 0.005,
             "clipnorm": 0.5,
         }
-        def scheduler(epoch):
-            if epoch < 15:
-                return self.settings["lr"]
-            elif epoch < 30:
-                return self.settings["lr"]/2
-            elif epoch < 50:
-                return self.settings["lr"]/10
-            elif epoch < 75:
-                return self.settings["lr"]/100
-            else:
-                return self.settings["lr"]/1000
+        scheduler = InverseTimeDecay(self.settings["lr"],
+                                     decay_steps=32.0,
+                                     decay_rate=0.1)
         self.settings["scheduler"] = scheduler
 
     def predict(self, x1, x2, batch_size=None):
@@ -84,7 +79,8 @@ class Model(object):
         '''Loads the whole model'''
         self.load_spm()
         logging.info("Loading neural classifier")
-        self.model = load_model(self.dir + '/model.h5')
+        deps = { 'f1': f1 }
+        self.model = load_model(self.dir + '/model.h5', custom_objects=deps)
 
     def train_vocab(self, monolingual, threads):
         '''Trains SentencePiece model and embeddings with Glove'''
@@ -137,19 +133,16 @@ class Model(object):
                               self.settings["steps_per_epoch"])
 
         dev_generator = TupleSentenceGenerator(
-                            self.spm, shuffle=True,
+                            self.spm, shuffle=False,
                             batch_size=self.settings["batch_size"],
                             maxlen=self.settings["maxlen"])
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/model.h5'
-        checkpoint = ModelCheckpoint(model_filename,
-                                     monitor='val_accuracy',
-                                     save_best_only='True')
-        earlystop = EarlyStopping(monitor='val_accuracy',
+        earlystop = EarlyStopping(monitor='val_f1',
+                                  mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
-        lr_schedule = LearningRateScheduler(self.settings["scheduler"])
 
         logging.info("Training neural classifier")
 
@@ -160,6 +153,15 @@ class Model(object):
                        epochs=self.settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
-                       callbacks=[earlystop, lr_schedule],
+                       callbacks=[earlystop],
                        verbose=1)
         self.model.save(model_filename)
+
+        y_true = dev_generator.y
+        y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
+        logging.info("Dev precision: {:.3f}".format(precision_score(y_true, y_pred)))
+        logging.info("Dev recall: {:.3f}".format(recall_score(y_true, y_pred)))
+        logging.info("Dev f1: {:.3f}".format(f1_score(y_true, y_pred)))
+        logging.info("Dev mcc: {:.3f}".format(matthews_corrcoef(y_true, y_pred)))
+
+        return y_true, y_pred
