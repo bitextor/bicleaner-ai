@@ -1,7 +1,11 @@
 from transformers import TFAutoModelForSequenceClassification, AutoTokenizer
+from transformers.optimization_tf import create_optimizer
 from keras.optimizers.schedules import InverseTimeDecay
 from keras.callbacks import EarlyStopping
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
+from keras.losses import SparseCategoricalCrossentropy
+from keras.metrics import Precision, Recall
+from keras.optimizers import Adam
 from keras.models import load_model
 from glove import Corpus, Glove
 import sentencepiece as sp
@@ -173,20 +177,30 @@ class Transformer(object):
         self.model = None
 
         self.settings = {
-            "model": 'roberta-base',
-            "batch_size": 8,
-            "n_classes": 1,
+            "model": 'jplu/tf-xlm-roberta-base',
+            "batch_size": 32,
+            "maxlen": 200,
+            "n_classes": 2,
             "epochs": 10,
-            "steps_per_epoch": 128,
+            "steps_per_epoch": 20000,
             "patience": 5,
             "loss": "binary_crossentropy",
-            "lr": 5e6,
+            "lr": 2e-6,
+            "decay_rate": 0.1,
+            "warmup_steps": 1000,
             "clipnorm": 1.0,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
                                      decay_steps=32.0,
                                      decay_rate=0.1)
         self.settings["scheduler"] = scheduler
+        optimizer, scheduler = create_optimizer(
+                self.settings["lr"],
+                self.settings["steps_per_epoch"]*self.settings["epochs"],
+                self.settings["warmup_steps"],
+                weight_decay_rate=self.settings["decay_rate"])
+        self.settings["scheduler"] = scheduler
+        self.settings["optimizer"] = optimizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.settings["model"])
 
     def build_dataset(self, filename):
@@ -210,14 +224,30 @@ class Transformer(object):
     def train(self, train_set, dev_set):
         logging.info("Vectorizing training set")
 
-        train_dataset = self.build_dataset(train_set)
-        train_dataset = train_dataset.shuffle(
-                len(train_dataset)).batch(self.settings["batch_size"])
-        steps_per_epoch = min(len(train_dataset),
+        # train_dataset = self.build_dataset(train_set)
+        # train_dataset = train_dataset.shuffle(
+        #         len(train_dataset)).batch(self.settings["batch_size"])
+        # steps_per_epoch = min(len(train_dataset),
+        #                       self.settings["steps_per_epoch"])
+
+        # dev_dataset = self.build_dataset(dev_set).batch(
+        #         self.settings["batch_size"])
+        train_generator = ConcatSentenceGenerator(
+                            self.tokenizer,
+                            batch_size=self.settings["batch_size"],
+                            maxlen=self.settings["maxlen"],
+                            shuffle=True)
+        train_generator.load(train_set)
+        steps_per_epoch = min(len(train_generator),
                               self.settings["steps_per_epoch"])
 
-        dev_dataset = self.build_dataset(dev_set)
-        dev_dataset.batch(self.settings["batch_size"])
+        dev_generator = ConcatSentenceGenerator(
+                            self.tokenizer,
+                            batch_size=self.settings["batch_size"],
+                            maxlen=self.settings["maxlen"],
+                            shuffle=False)
+        dev_generator.load(dev_set)
+
 
         model_filename = self.dir + '/model.h5'
         earlystop = EarlyStopping(monitor='val_f1',
@@ -225,22 +255,29 @@ class Transformer(object):
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
 
-        logging.info("Training neural classifier")
+        logging.info("Training classifier")
 
-        self.model = TFAutoModelForSequenceClassification.from_pretrained(
-                self.settings['model'])
-        self.model.compile(optimizer='adam', loss='binary_crossentropy')
+        strategy = tf.distribute.MirroredStrategy()
+        with strategy.scope():
+            self.model = TFAutoModelForSequenceClassification.from_pretrained(
+                    self.settings['model'],
+                    num_labels=self.settings["n_classes"])
+            self.model.compile(optimizer=self.settings["optimizer"],
+                    loss=SparseCategoricalCrossentropy(from_logits=True),
+                    metrics=[f1])
         self.model.summary()
-        self.model.fit(train_dataset,
+        self.model.fit(train_generator,
                        epochs=self.settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
-                       validation_data=dev_dataset,
+                       validation_data=dev_generator,
+                       batch_size=self.settings["batch_size"],
                        callbacks=[earlystop],
                        verbose=1)
         self.model.save(model_filename)
 
-        y_true = np.array(list(dev_dataset.map(lambda x,y: y).as_numpy_iterator()))
-        y_pred = np.where(self.model.predict(dev_dataset) >= 0.5, 1, 0)
+        y_true = dev_generator.y
+        y_pred = self.model.predict(dev_generator)
+        y_pred = np.where(np.argmax(y_pred, axis=-1) >= 0.5, 1, 0)
         logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
         logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
         logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")

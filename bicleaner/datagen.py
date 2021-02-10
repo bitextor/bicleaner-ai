@@ -147,20 +147,21 @@ class ConcatSentenceGenerator(keras.utils.Sequence):
             with open(source, 'r') as file_:
                 for line in file_:
                     fields = line.split('\t')
-                    sent_a = self.tok.tokenize(fields[0])
-                    sent_b = self.tok.tokenize(fields[1])
-                    data[0].append(self.tok.build_inputs_with_special_tokens(
-                                        sent_a, sent_b))
-                    data[1].append(fields[2].strip())
+                    data[0].append(fields[0])
+                    data[1].append(fields[1])
+                    data[2].append(fields[2].strip())
         else:
             data = source
 
-        self.x = pad_sequences(data[0],
-                               padding='post',
-                               truncating='post',
-                               maxlen=self.maxlen)
+        dataset = self.tok(data[0], data[1],
+                           padding=True,
+                           truncation=True,
+                           max_length=self.maxlen)
+        self.x = np.array(dataset["input_ids"])
+        self.att_mask = np.array(dataset["attention_mask"])
+
         self.num_samples = self.x.shape[0]
-        if data[1] is None: #TODO set y to None instead of zeros for inference
+        if data[2] is None: #TODO set y to None instead of zeros for inference
             self.y = np.zeros(self.num_samples)
         else:
             self.y = np.array(data[2], dtype=int)
