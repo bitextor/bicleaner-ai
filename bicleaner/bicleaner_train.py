@@ -51,7 +51,7 @@ def initialization():
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
     groupO.add_argument('-b', '--block_size', type=check_positive, default=1000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
-    groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, default=0, help="Which GPU use")
+    groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use")
     groupO.add_argument('--wrong_examples_file', type=argparse.FileType('r'), default=None, help="File with wrong examples extracted to replace the synthetic examples from method used by default")
     groupO.add_argument('--disable_lang_ident', default=False, action='store_true', help="Don't apply features that use language detecting")
     groupO.add_argument('--disable_relative_paths', action='store_true', help="Don't use relative paths if they are in the same directory of model_file")
@@ -93,7 +93,8 @@ def initialization():
         os.environ["PYTHONHASHSEED"] = str(args.seed)
         tf.random.seed = args.seed
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    if args.gpu is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     tf.config.threading.set_intra_op_parallelism_threads(args.processes)
     tf.config.threading.set_inter_op_parallelism_threads(args.processes)
 
