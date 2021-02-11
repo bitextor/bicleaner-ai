@@ -256,7 +256,6 @@ def reduce_process(output_queue, output_file, block_size):
             with open(filein_name, 'r') as filein:
                 for i in filein:
                     output_file.write(i)
-                filein.close()
             os.unlink(filein_name)
 
         job = output_queue.get()
@@ -277,7 +276,6 @@ def reduce_process(output_queue, output_file, block_size):
         with open(filein_name, 'r') as filein:
             for i in filein:
                 output_file.write(i)
-            filein.close()
 
         os.unlink(filein_name)
 
@@ -303,10 +301,7 @@ def build_noise(input, args):
     maxsize = 1000 * process_count
     output_queue = Queue(maxsize = maxsize)
     worker_count = process_count
-    if args.save_train_data is not None:
-        output_file = open(args.save_train_data, 'w+')
-    else:
-        output_file = NamedTemporaryFile('w+', delete=False)
+    output_file = NamedTemporaryFile('w+', delete=False)
 
     # Start reducer
     reduce = Process(target = reduce_process,

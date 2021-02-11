@@ -10,6 +10,7 @@ import logging
 import os
 import random
 import sys
+import shutil
 
 #Allows to load modules while inside or outside the package  
 try:
@@ -49,7 +50,7 @@ def initialization():
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
-    groupO.add_argument('-b', '--block_size', type=check_positive, default=1000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
+    groupO.add_argument('-b', '--block_size', type=check_positive, default=10000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use")
     groupO.add_argument('--save_train_data', type=str, default=None, help="Save the generated dataset into a file. If the file already exists the training dataset will be loaded from there.")
@@ -123,9 +124,13 @@ def perform_training(args):
     # Train porn removal classifier
     train_porn_removal(args)
 
-    if args.save_train_data is None or os.stat(args.save_train_data).st_size == 0:
+    if (args.save_train_data is None
+            or not os.path.isfile(args.save_train_data)
+            or os.stat(args.save_train_data).st_size == 0):
         logging.info("Building training set.")
         train_sentences = build_noise(args.parallel_train, args)
+        if args.save_train_data is not None:
+            shutil.copyfile(train_sentences, args.save_train_data)
     else:
         train_sentences = args.save_train_data
         logging.info("Using pre-built training set: " + train_sentences)
@@ -146,7 +151,8 @@ def perform_training(args):
 
     y_true, y_pred = model.train(train_sentences, dev_sentences)
 
-    os.unlink(train_sentences)
+    if args.save_train_data is not None and train_sentences != args.save_train_data:
+        os.unlink(train_sentences)
     os.unlink(dev_sentences)
     logging.info("End training.")
 
