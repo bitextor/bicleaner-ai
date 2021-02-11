@@ -303,7 +303,10 @@ def build_noise(input, args):
     maxsize = 1000 * process_count
     output_queue = Queue(maxsize = maxsize)
     worker_count = process_count
-    output_file = NamedTemporaryFile('w+', delete=False)
+    if args.save_train_data is not None:
+        output_file = open(args.save_train_data, 'w+')
+    else:
+        output_file = NamedTemporaryFile('w+', delete=False)
 
     # Start reducer
     reduce = Process(target = reduce_process,

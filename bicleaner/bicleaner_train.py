@@ -52,6 +52,7 @@ def initialization():
     groupO.add_argument('-b', '--block_size', type=check_positive, default=1000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use")
+    groupO.add_argument('--save_train_data', type=str, default=None, help="Save the generated dataset into a file. If the file already exists the training dataset will be loaded from there.")
     groupO.add_argument('--wrong_examples_file', type=argparse.FileType('r'), default=None, help="File with wrong examples extracted to replace the synthetic examples from method used by default")
     groupO.add_argument('--disable_lang_ident', default=False, action='store_true', help="Don't apply features that use language detecting")
     groupO.add_argument('--disable_relative_paths', action='store_true', help="Don't use relative paths if they are in the same directory of model_file")
@@ -122,8 +123,12 @@ def perform_training(args):
     # Train porn removal classifier
     train_porn_removal(args)
 
-    logging.info("Building training set.")
-    train_sentences = build_noise(args.parallel_train, args)
+    if args.save_train_data is None or os.stat(args.save_train_data).st_size == 0:
+        logging.info("Building training set.")
+        train_sentences = build_noise(args.parallel_train, args)
+    else:
+        train_sentences = args.save_train_data
+        logging.info("Using pre-built training set: " + train_sentences)
     test_sentences = build_noise(args.parallel_test, args)
     dev_sentences = test_sentences
     logging.debug(f"Training sentences file: {train_sentences}")
