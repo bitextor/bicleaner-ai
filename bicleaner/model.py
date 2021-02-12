@@ -1,8 +1,9 @@
 from keras.optimizers.schedules import InverseTimeDecay
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, Callback
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from keras.models import load_model
 from glove import Corpus, Glove
+import keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
@@ -143,6 +144,9 @@ class Model(object):
                                   mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
+        class LRReport(Callback):
+            def on_epoch_end(self, epoch, logs={}):
+                print(f' - lr: {self.model.optimizer.lr(epoch*steps_per_epoch):.3E}')
 
         logging.info("Training neural classifier")
 
@@ -153,7 +157,7 @@ class Model(object):
                        epochs=self.settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
-                       callbacks=[earlystop],
+                       callbacks=[earlystop, LRReport()],
                        verbose=1)
         self.model.save(model_filename)
 
