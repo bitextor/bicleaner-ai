@@ -1,4 +1,4 @@
-from sacremoses import MosesTokenizer
+from sacremoses import MosesTokenizer, MosesDetokenizer
 from toolwrapper import ToolWrapper
 from subprocess import run, PIPE
 import logging
@@ -16,10 +16,12 @@ class Tokenizer:
         if command:
             self.cmd = command.split(' ')
             self.tokenizer = ToolWrapper(self.cmd)
+            self.detokenizer = None
             self.external =  True
             self.spm = command.find('spm_encode') > -1
         else:
             self.tokenizer = MosesTokenizer(lang=l)
+            self.detokenizer = MosesDetokenizer(lang=l)
             self.external = False
             self.spm = False
             self.cmd = None
@@ -40,6 +42,8 @@ class Tokenizer:
     def detokenize(self, text):
         if self.spm:
             return ''.join(text).replace('\u2581',' ')
+        elif self.detokenizer is not None:
+            return self.detokenizer.detokenize(text)
         else:
             return ' '.join(text)
 

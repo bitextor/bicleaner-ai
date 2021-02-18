@@ -193,11 +193,12 @@ def sentence_noise(i, src, trg, args):
     for j in range(args.freq_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         replaced = add_freqency_replacement_noise_to_sentence(t_toks, args.tl_word_freqs)
-        sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
+        if replaced is not None:
+            sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
 
     # Randomly omit words
     tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
-    for j in range(args.freq_ratio):
+    for j in range(args.womit_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         omitted = remove_words_randomly_from_sentence(t_toks)
         sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
@@ -448,17 +449,33 @@ def frequence_based_noise(from_idx, to_idx, offsets, temp, wrong_sentences, doub
 
 # Introduce noise to sentences using word frequence
 def add_freqency_replacement_noise_to_sentence(sentence, double_linked_zipf_freqs):
-    # Random number of words that will be replaced
-    num_words_replaced = random.randint(1, len(sentence))
-    # Replacing N words at random positions
-    idx_words_to_replace = random.sample(range(len(sentence)), num_words_replaced)
+    count = 0
+    sent_orig = sentence[:]
+    # Loop until any of the chosen words have an alternative, at most 3 times
+    while True:
+        # Random number of words that will be replaced
+        num_words_replaced = random.randint(1, len(sentence))
+        # Replacing N words at random positions
+        idx_words_to_replace = random.sample(range(len(sentence)), num_words_replaced)
 
-    for wordpos in idx_words_to_replace:
-        w = sentence[wordpos]
-        wfreq = double_linked_zipf_freqs.get_word_freq(w)
-        alternatives = double_linked_zipf_freqs.get_words_for_freq(wfreq)
-        if alternatives is not None:
-            sentence[wordpos] = random.choice(list(alternatives))
+        for wordpos in idx_words_to_replace:
+            w = sentence[wordpos]
+            wfreq = double_linked_zipf_freqs.get_word_freq(w)
+            alternatives = double_linked_zipf_freqs.get_words_for_freq(wfreq)
+            if alternatives is not None:
+                alternatives = list(alternatives)
+
+                # Avoid replace with the same word
+                if w.lower() in alternatives:
+                    alternatives.remove(w.lower())
+                if not alternatives == []:
+                    sentence[wordpos] = random.choice(alternatives)
+        count += 1
+        if sentence != sent_orig:
+            break
+        elif count >= 3:
+            return None
+
     return sentence
 
 
