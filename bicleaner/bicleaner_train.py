@@ -134,6 +134,7 @@ def perform_training(args):
     else:
         train_sentences = args.save_train_data
         logging.info("Using pre-built training set: " + train_sentences)
+    logging.info("Building development set.")
     test_sentences = build_noise(args.parallel_test, args)
     dev_sentences = test_sentences
     logging.debug(f"Training sentences file: {train_sentences}")

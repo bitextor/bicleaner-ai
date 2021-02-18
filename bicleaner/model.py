@@ -39,15 +39,19 @@ class Model(object):
             "n_classes": 1,
             "entail_dir": "both",
             "epochs": 200,
-            "steps_per_epoch": 128,
+            "steps_per_epoch": 4096,
             "patience": 20,
             "loss": "binary_crossentropy",
-            "lr": 0.005,
+            "lr": 5e-4,
             "clipnorm": 0.5,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
-                                     decay_steps=32.0,
-                                     decay_rate=0.1)
+                         decay_steps=self.settings["steps_per_epoch"]//4,
+                         decay_rate=0.2)
+        # scheduler = tf.keras.experimental.CosineDecayRestarts(
+        #         self.settings["lr"],
+        #         self.settings["steps_per_epoch"]*4,
+        #         t_mul=2.0, m_mul=0.8)
         self.settings["scheduler"] = scheduler
 
     def predict(self, x1, x2, batch_size=None):

@@ -99,7 +99,7 @@ def create_embedding(vectors, max_length, projected_dim, trainable=False):
             ),
             layers.TimeDistributed(
                 layers.Dense(projected_dim, activation=None, use_bias=False,
-                    kernel_regularizer='l2')
+                    kernel_regularizer=None)
             ),
         ]
     )
