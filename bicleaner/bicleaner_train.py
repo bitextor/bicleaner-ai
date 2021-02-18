@@ -142,7 +142,7 @@ def perform_training(args):
 
     logging.info("Start training.")
 
-    model = Transformer(args.model_dir)
+    model = DecomposableAttention(args.model_dir)
     # Load spm and embeddings if already trained
     try:
         model.load_spm()

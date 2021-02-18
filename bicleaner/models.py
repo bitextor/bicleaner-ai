@@ -36,7 +36,7 @@ class DecomposableAttention(object):
 
         self.settings = {
             "emb_dim": 300,
-            "emb_trainable": False,
+            "emb_trainable": True,
             "emb_epochs": 10,
             "window": 15,
             "vocab_size": 32000,
@@ -183,6 +183,87 @@ class DecomposableAttention(object):
         logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
 
         return y_true, y_pred
+
+class Transformer(DecomposableAttention):
+    '''Basic Transformer model'''
+
+    def __init__(self, directory):
+        super(Transformer, self).__init__(directory)
+
+        self.settings = {
+            "emb_dim": 300,
+            "emb_trainable": False,
+            "emb_epochs": 10,
+            "window": 15,
+            "vocab_size": 32000,
+            "batch_size": 1024,
+            "maxlen": 200,
+            "n_hidden": 200,
+            "dropout": 0.2,
+            "n_classes": 1,
+            "epochs": 200,
+            "steps_per_epoch": 4096,
+            "patience": 20,
+            "loss": "binary_crossentropy",
+            "lr": 5e-4,
+        }
+        scheduler = InverseTimeDecay(self.settings["lr"],
+                         decay_steps=self.settings["steps_per_epoch"]//4,
+                         decay_rate=0.2)
+        self.settings["scheduler"] = scheduler
+
+    def train(self, train_set, dev_set):
+        '''Trains the neural classifier'''
+
+        if self.wv is None or self.spm is None:
+            raise Exception("Vocabulary is not trained")
+
+        logging.info("Vectorizing training set")
+        train_generator = TupleSentenceGenerator(
+                              self.spm, shuffle=True,
+                              batch_size=self.settings["batch_size"],
+                              maxlen=self.settings["maxlen"])
+        train_generator.load(train_set)
+        steps_per_epoch = min(len(train_generator),
+                              self.settings["steps_per_epoch"])
+
+        dev_generator = TupleSentenceGenerator(
+                            self.spm, shuffle=False,
+                            batch_size=self.settings["batch_size"],
+                            maxlen=self.settings["maxlen"])
+        dev_generator.load(dev_set)
+
+        model_filename = self.dir + '/model.h5'
+        earlystop = EarlyStopping(monitor='val_f1',
+                                  mode='max',
+                                  patience=self.settings["patience"],
+                                  restore_best_weights=True)
+        class LRReport(Callback):
+            def on_epoch_end(self, epoch, logs={}):
+                print(f' - lr: {self.model.optimizer.lr(epoch*steps_per_epoch):.3E}')
+
+        logging.info("Training neural classifier")
+
+        self.model = build_model(self.wv, self.settings)
+        self.model.summary()
+        self.model.fit(train_generator,
+                       batch_size=self.settings["batch_size"],
+                       epochs=self.settings["epochs"],
+                       steps_per_epoch=steps_per_epoch,
+                       validation_data=dev_generator,
+                       callbacks=[earlystop, LRReport()],
+                       verbose=1)
+        self.model.save(model_filename)
+
+        y_true = dev_generator.y
+        y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
+        logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
+        logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
+
+        return y_true, y_pred
+
 
 class BCXLMRoberta(object):
     def __init__(self, directory):
