@@ -2,7 +2,6 @@ from multiprocessing import Queue, Process, Value, cpu_count
 from heapq import heappush, heappop
 from tempfile import TemporaryFile, NamedTemporaryFile
 from fuzzywuzzy import process, fuzz
-from joblib import Parallel, delayed
 import logging
 import os
 import random

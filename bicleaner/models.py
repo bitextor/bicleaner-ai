@@ -1,4 +1,4 @@
-from transformers import TFAutoModelForSequenceClassification, AutoTokenizer
+from transformers import TFXLMRobertaForSequenceClassification, RobertaTokenizer
 from transformers.optimization_tf import create_optimizer
 from keras.optimizers.schedules import InverseTimeDecay
 from keras.callbacks import EarlyStopping, Callback
@@ -18,11 +18,13 @@ import logging
 try:
     from .decomposable_attention import build_model, f1
     from .datagen import TupleSentenceGenerator, ConcatSentenceGenerator
+    from .layers import BCClassificationHead
 except (SystemError, ImportError):
     from decomposable_attention import build_model, f1
     from datagen import TupleSentenceGenerator, ConcatSentenceGenerator
+    from layers import BCClassificationHead
 
-class Model(object):
+class DecomposableAttention(object):
 
     def __init__(self, directory):
         self.dir = directory
@@ -131,6 +133,8 @@ class Model(object):
         embeddings.save(self.dir + '/glove.vectors')
 
     def train(self, train_set, dev_set):
+        '''Trains the neural classifier'''
+
         if self.wv is None or self.spm is None:
             raise Exception("Vocabulary is not trained")
 
@@ -180,7 +184,7 @@ class Model(object):
 
         return y_true, y_pred
 
-class Transformer(object):
+class BCXLMRoberta(object):
     def __init__(self, directory):
         self.dir = directory
         self.model = None
@@ -210,7 +214,7 @@ class Transformer(object):
                 weight_decay_rate=self.settings["decay_rate"])
         self.settings["scheduler"] = scheduler
         self.settings["optimizer"] = optimizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.settings["model"])
+        self.tokenizer = RobertaTokenizer.from_pretrained(self.settings["model"])
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -233,14 +237,6 @@ class Transformer(object):
     def train(self, train_set, dev_set):
         logging.info("Vectorizing training set")
 
-        # train_dataset = self.build_dataset(train_set)
-        # train_dataset = train_dataset.shuffle(
-        #         len(train_dataset)).batch(self.settings["batch_size"])
-        # steps_per_epoch = min(len(train_dataset),
-        #                       self.settings["steps_per_epoch"])
-
-        # dev_dataset = self.build_dataset(dev_set).batch(
-        #         self.settings["batch_size"])
         train_generator = ConcatSentenceGenerator(
                             self.tokenizer,
                             batch_size=self.settings["batch_size"],
@@ -268,7 +264,7 @@ class Transformer(object):
 
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
-            self.model = TFAutoModelForSequenceClassification.from_pretrained(
+            self.model = BCXLMRobertaForSequenceClassification.from_pretrained(
                     self.settings['model'],
                     num_labels=self.settings["n_classes"])
             self.model.compile(optimizer=self.settings["optimizer"],
@@ -295,33 +291,8 @@ class Transformer(object):
         return y_true, y_pred
 
 class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassification):
-    """Head for sentence-level classification tasks."""
+    """Model for sentence-level classification tasks."""
 
     def __init__(self, config):
         super().__init__(config)
         self.classifier = BCClassificationHead(config)
-
-
-class BCClassificationHead(layers.Layer):
-    """Head for sentence-level classification tasks."""
-
-    def __init__(self, config, **kwargs):
-        super().__init__(**kwargs)
-        self.dense = layers.Dense(
-            config.hidden_size,
-            kernel_initializer=get_initializer(config.initializer_range),
-            activation=config.hidden_activation,
-            name="dense",
-        )
-        self.dropout = layers.Dropout(config.hidden_dropout_prob)
-        self.out_proj = layers.Dense(
-            config.num_labels, kernel_initializer=get_initializer(config.initializer_range), name="out_proj"
-        )
-
-    def call(self, features, training=False):
-        x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
-        x = self.dropout(x, training=training)
-        x = self.dense(x)
-        x = self.dropout(x, training=training)
-        x = self.out_proj(x)
-        return x

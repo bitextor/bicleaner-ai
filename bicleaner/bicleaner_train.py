@@ -14,14 +14,14 @@ import shutil
 
 #Allows to load modules while inside or outside the package  
 try:
-    from .model import Transformer
+    from .models import DecomposableAttention
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
     from .training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
-    from model import Transformer
+    from models import DecomposableAttention
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
