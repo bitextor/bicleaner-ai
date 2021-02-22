@@ -16,13 +16,15 @@ import numpy as np
 import logging
 
 try:
-    from .decomposable_attention import build_model, f1
+    from .decomposable_attention import build_model
     from .datagen import TupleSentenceGenerator, ConcatSentenceGenerator
     from .layers import BCClassificationHead
+    from .metrics import FScore
 except (SystemError, ImportError):
-    from decomposable_attention import build_model, f1
+    from decomposable_attention import build_model
     from datagen import TupleSentenceGenerator, ConcatSentenceGenerator
     from layers import BCClassificationHead
+    from metrics import FScore
 
 class DecomposableAttention(object):
 
@@ -36,7 +38,7 @@ class DecomposableAttention(object):
 
         self.settings = {
             "emb_dim": 300,
-            "emb_trainable": True,
+            "emb_trainable": False,
             "emb_epochs": 10,
             "window": 15,
             "vocab_size": 32000,
@@ -92,7 +94,7 @@ class DecomposableAttention(object):
         '''Loads the whole model'''
         self.load_spm()
         logging.info("Loading neural classifier")
-        deps = { 'f1': f1 }
+        deps = { 'FScore': FScore }
         self.model = load_model(self.dir + '/model.h5', custom_objects=deps)
 
     def train_vocab(self, monolingual, threads):

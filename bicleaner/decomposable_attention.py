@@ -13,6 +13,10 @@ from keras import layers, Model, models
 from keras import backend as K
 import numpy as np
 
+try:
+    from .metrics import FScore
+except (SystemError, ImportError):
+    from metrics import FScore
 
 def build_model(vectors, settings):
     max_length = settings["maxlen"]
@@ -79,7 +83,7 @@ def build_model(vectors, settings):
     model.compile(
         optimizer=Adam(learning_rate=settings["scheduler"], clipnorm=settings["clipnorm"]),
         loss=settings["loss"],
-        metrics=[Precision(name='p'), Recall(name='r'), f1],
+        metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')],
         experimental_run_tf_function=False,
     )
 
