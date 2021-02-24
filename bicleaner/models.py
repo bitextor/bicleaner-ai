@@ -9,24 +9,31 @@ from keras.optimizers import Adam
 from keras.models import load_model
 from keras import layers
 from glove import Corpus, Glove
+from abc import ABC
 import keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
+import decomposable_attention
 import logging
 
 try:
-    from .decomposable_attention import build_model
     from .datagen import TupleSentenceGenerator, ConcatSentenceGenerator
-    from .layers import BCClassificationHead
     from .metrics import FScore
+    from .layers import (
+            TransformerBlock,
+            TokenAndPositionEmbedding,
+            BCClassificationHead)
 except (SystemError, ImportError):
-    from decomposable_attention import build_model
     from datagen import TupleSentenceGenerator, ConcatSentenceGenerator
-    from layers import BCClassificationHead
     from metrics import FScore
+    from layers import (
+            TransformerBlock,
+            TokenAndPositionEmbedding,
+            BCClassificationHead)
 
-class DecomposableAttention(object):
+class BaseModel(ABC):
+    '''Abstract Model class that gathers most of the training logic'''
 
     def __init__(self, directory):
         self.dir = directory
@@ -35,6 +42,7 @@ class DecomposableAttention(object):
         self.vocab = None
         self.model = None
         self.wv = None
+        self.separator = None
 
         self.settings = {
             "emb_dim": 300,
@@ -64,14 +72,19 @@ class DecomposableAttention(object):
         #         t_mul=2.0, m_mul=0.8)
         self.settings["scheduler"] = scheduler
 
+    def get_generator(self, batch_size, shuffle):
+        ''' Returns a sentence generator instance according to the model input '''
+        raise NotImplementedError("Subclass must define its sentence generator")
+
+    def build_model(self):
+        '''Returns a compiled Keras model instance'''
+        raise NotImplementedError("Subclass must implement its model architecture")
+
     def predict(self, x1, x2, batch_size=None):
         '''Predicts from sequence generator'''
         if batch_size is None:
             batch_size = self.settings["batch_size"]
-        generator = TupleSentenceGenerator(
-                        self.spm, shuffle=False,
-                        batch_size=batch_size,
-                        maxlen=self.settings["maxlen"])
+        generator = self.get_generator(batch_size, shuffle=False)
         generator.load((x1, x2, None))
         return self.model.predict(generator)
 
@@ -111,6 +124,7 @@ class DecomposableAttention(object):
                       unk_id=1,
                       bos_id=-1,
                       eos_id=-1,
+                      user_defined_symbols=self.separator,
                       num_threads=threads,
                       minloglevel=1)
         monolingual.seek(0)
@@ -141,18 +155,16 @@ class DecomposableAttention(object):
             raise Exception("Vocabulary is not trained")
 
         logging.info("Vectorizing training set")
-        train_generator = TupleSentenceGenerator(
-                              self.spm, shuffle=True,
-                              batch_size=self.settings["batch_size"],
-                              maxlen=self.settings["maxlen"])
+        train_generator = self.get_generator(
+                                self.settings["batch_size"],
+                                shuffle=True)
         train_generator.load(train_set)
         steps_per_epoch = min(len(train_generator),
                               self.settings["steps_per_epoch"])
 
-        dev_generator = TupleSentenceGenerator(
-                            self.spm, shuffle=False,
-                            batch_size=self.settings["batch_size"],
-                            maxlen=self.settings["maxlen"])
+        dev_generator = self.get_generator(
+                                self.settings["batch_size"],
+                                shuffle=False)
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/model.h5'
@@ -166,7 +178,7 @@ class DecomposableAttention(object):
 
         logging.info("Training neural classifier")
 
-        self.model = build_model(self.wv, self.settings)
+        self.model = self.build_model()
         self.model.summary()
         self.model.fit(train_generator,
                        batch_size=self.settings["batch_size"],
@@ -186,85 +198,74 @@ class DecomposableAttention(object):
 
         return y_true, y_pred
 
-class Transformer(DecomposableAttention):
+class DecomposableAttention(BaseModel):
+    '''Decomposable Attention model (Parikh et. al. 2016)'''
+
+    def __init__(self, directory):
+        super(DecomposableAttention, self).__init__(directory)
+
+    def get_generator(self, batch_size, shuffle):
+        return TupleSentenceGenerator(
+                    self.spm, shuffle=shuffle,
+                    batch_size=batch_size,
+                    maxlen=self.settings["maxlen"])
+
+    def build_model(self):
+        return decomposable_attention.build_model(self.wv, self.settings)
+
+class Transformer(BaseModel):
     '''Basic Transformer model'''
 
     def __init__(self, directory):
         super(Transformer, self).__init__(directory)
 
+        self.separator = '[SEP]'
         self.settings = {
-            "emb_dim": 300,
-            "emb_trainable": False,
-            "emb_epochs": 10,
-            "window": 15,
-            "vocab_size": 32000,
-            "batch_size": 1024,
+            **self.settings,
             "maxlen": 200,
             "n_hidden": 200,
+            "n_heads": 8,
             "dropout": 0.2,
-            "n_classes": 1,
-            "epochs": 200,
-            "steps_per_epoch": 4096,
-            "patience": 20,
-            "loss": "binary_crossentropy",
-            "lr": 5e-4,
+            "att_dropout": 0.1,
         }
-        scheduler = InverseTimeDecay(self.settings["lr"],
-                         decay_steps=self.settings["steps_per_epoch"]//4,
-                         decay_rate=0.2)
-        self.settings["scheduler"] = scheduler
 
-    def train(self, train_set, dev_set):
-        '''Trains the neural classifier'''
+    def get_generator(self, batch_size, shuffle):
+        return ConcatSentenceGenerator(
+                    self.spm, shuffle=shuffle,
+                    batch_size=batch_size,
+                    maxlen=self.settings["maxlen"],
+                    separator=self.separator)
 
-        if self.wv is None or self.spm is None:
-            raise Exception("Vocabulary is not trained")
+    def build_model(self):
+        settings = self.settings
+        inputs = layers.Input(shape=(settings["maxlen"],), dtype='int32')
+        embedding = TokenAndPositionEmbedding(self.wv,
+                                              settings["maxlen"],
+                                              trainable=True)
+        transformer_block = TransformerBlock(
+                                settings["emb_dim"],
+                                settings["n_heads"],
+                                settings["n_hidden"],
+                                settings["att_dropout"])
 
-        logging.info("Vectorizing training set")
-        train_generator = TupleSentenceGenerator(
-                              self.spm, shuffle=True,
-                              batch_size=self.settings["batch_size"],
-                              maxlen=self.settings["maxlen"])
-        train_generator.load(train_set)
-        steps_per_epoch = min(len(train_generator),
-                              self.settings["steps_per_epoch"])
+        x = embedding(inputs)
+        x = transformer_block(x)
+        x = layers.GlobalAveragePooling1D()(x)
+        x = layers.Dropout(settings["dropout"])(x)
+        x = layers.Dense(settings["n_hidden"], activation="relu")(x)
+        x = layers.Dropout(settings["dropout"])(x)
+        if settings['loss'] == 'categorical_crossentropy':
+            outputs = layers.Dense(settings["n_classes"], activation='softmax')(x)
+        else:
+            outputs = layers.Dense(settings["n_classes"], activation='sigmoid')(x)
 
-        dev_generator = TupleSentenceGenerator(
-                            self.spm, shuffle=False,
-                            batch_size=self.settings["batch_size"],
-                            maxlen=self.settings["maxlen"])
-        dev_generator.load(dev_set)
-
-        model_filename = self.dir + '/model.h5'
-        earlystop = EarlyStopping(monitor='val_f1',
-                                  mode='max',
-                                  patience=self.settings["patience"],
-                                  restore_best_weights=True)
-        class LRReport(Callback):
-            def on_epoch_end(self, epoch, logs={}):
-                print(f' - lr: {self.model.optimizer.lr(epoch*steps_per_epoch):.3E}')
-
-        logging.info("Training neural classifier")
-
-        self.model = build_model(self.wv, self.settings)
-        self.model.summary()
-        self.model.fit(train_generator,
-                       batch_size=self.settings["batch_size"],
-                       epochs=self.settings["epochs"],
-                       steps_per_epoch=steps_per_epoch,
-                       validation_data=dev_generator,
-                       callbacks=[earlystop, LRReport()],
-                       verbose=1)
-        self.model.save(model_filename)
-
-        y_true = dev_generator.y
-        y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
-        logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
-        logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
-        logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
-        logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
-
-        return y_true, y_pred
+        model = keras.Model(inputs=inputs, outputs=outputs)
+        model.compile(
+                optimizer=Adam(learning_rate=settings["scheduler"],
+                               clipnorm=settings["clipnorm"]),
+                loss=settings["loss"],
+                metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')])
+        return model
 
 
 class BCXLMRoberta(object):

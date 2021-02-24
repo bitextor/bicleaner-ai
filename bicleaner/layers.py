@@ -7,6 +7,7 @@ class TokenAndPositionEmbedding(layers.Layer):
     '''Token and positional embeddings layer with pre-trained weights'''
     def __init__(self, vectors, maxlen, trainable=False):
         super(TokenAndPositionEmbedding, self).__init__()
+        self.maxlen = maxlen
         self.token_emb = layers.Embedding(
                             input_dim=vectors.shape[0],
                             output_dim=vectors.shape[1],
@@ -25,9 +26,14 @@ class TokenAndPositionEmbedding(layers.Layer):
         x = self.token_emb(x)
         return x + positions
 
+    def get_config(self):
+        config = { 'maxlen': self.maxlen }
+        base_config = super(TokenAndPositionEmbedding, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
 class TransformerBlock(layers.Layer):
     '''Transformer block as a Keras layer'''
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+    def __init__(self, embed_dim, num_heads, ff_dim, dropout=0.1):
         super(TransformerBlock, self).__init__()
         self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
         self.ffn = keras.Sequential(
@@ -35,8 +41,8 @@ class TransformerBlock(layers.Layer):
         )
         self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1 = layers.Dropout(rate)
-        self.dropout2 = layers.Dropout(rate)
+        self.dropout1 = layers.Dropout(dropout)
+        self.dropout2 = layers.Dropout(dropout)
 
     def call(self, inputs, training):
         attn_output = self.att(inputs, inputs)

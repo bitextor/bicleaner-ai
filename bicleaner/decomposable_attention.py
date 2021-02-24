@@ -15,8 +15,10 @@ import numpy as np
 
 try:
     from .metrics import FScore
+    from .layers import TokenAndPositionEmbedding
 except (SystemError, ImportError):
     from metrics import FScore
+    from layers import TokenAndPositionEmbedding
 
 def build_model(vectors, settings):
     max_length = settings["maxlen"]
@@ -93,14 +95,15 @@ def build_model(vectors, settings):
 def create_embedding(vectors, max_length, projected_dim, trainable=False):
     return models.Sequential(
         [
-            layers.Embedding(
-                vectors.shape[0],
-                vectors.shape[1],
-                input_length=max_length,
-                weights=[vectors],
-                trainable=trainable,
-                mask_zero=True,
-            ),
+            # layers.Embedding(
+            #     vectors.shape[0],
+            #     vectors.shape[1],
+            #     input_length=max_length,
+            #     weights=[vectors],
+            #     trainable=trainable,
+            #     mask_zero=True,
+            # ),
+            TokenAndPositionEmbedding(vectors, max_length, trainable),
             layers.TimeDistributed(
                 layers.Dense(projected_dim, activation=None, use_bias=False,
                     kernel_regularizer=None)

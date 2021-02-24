@@ -99,7 +99,8 @@ class ConcatSentenceGenerator(keras.utils.Sequence):
     '''
 
     def __init__(self, tokenizer,
-            batch_size=64, maxlen=100, shuffle=False):
+            batch_size=64, maxlen=100, shuffle=False,
+            separator=None):
         self.batch_size = batch_size
         self.maxlen = maxlen
         self.shuffle = shuffle
@@ -108,6 +109,7 @@ class ConcatSentenceGenerator(keras.utils.Sequence):
         self.x = None
         self.y = None
         self.tok = tokenizer
+        self.separator = separator
 
     def __len__(self):
         '''
@@ -147,21 +149,34 @@ class ConcatSentenceGenerator(keras.utils.Sequence):
             with open(source, 'r') as file_:
                 for line in file_:
                     fields = line.split('\t')
-                    data[0].append(fields[0])
-                    data[1].append(fields[1])
-                    data[2].append(fields[2].strip())
+                    # Concatenate sentences if tokenizer is SentencePiece
+                    if isinstance(self.tok, sp.SentencePieceProcessor):
+                        data[0].append(fields[0] + self.separator + fields[1])
+                        data[2].append(fields[2].strip())
+                    else:
+                        data[0].append(fields[0])
+                        data[1].append(fields[1])
+                        data[2].append(fields[2].strip())
         else:
             data = source
 
-        dataset = self.tok(data[0], data[1],
-                           padding=True,
-                           truncation=True,
-                           max_length=self.maxlen)
-        self.x = np.array(dataset["input_ids"])
-        self.att_mask = np.array(dataset["attention_mask"])
+        if isinstance(self.tok, sp.SentencePieceProcessor):
+            # Tokenize already concatenated sentences with SentencePiece
+            self.x = pad_sequences(self.tok.encode(data[0]),
+                                    padding="post",
+                                    truncating="post",
+                                    maxlen=self.maxlen)
+        else:
+            # Tokenize with Transformers tokenizer that concatenates internally
+            dataset = self.tok(data[0], data[1],
+                               padding=True,
+                               truncation=True,
+                               max_length=self.maxlen)
+            self.x = np.array(dataset["input_ids"])
+            # self.att_mask = np.array(dataset["attention_mask"])
 
         self.num_samples = self.x.shape[0]
-        if data[2] is None: #TODO set y to None instead of zeros for inference
+        if data[2] is None:
             self.y = np.zeros(self.num_samples)
         else:
             self.y = np.array(data[2], dtype=int)
