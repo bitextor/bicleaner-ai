@@ -1,14 +1,14 @@
-from keras.optimizers.schedules import InverseTimeDecay
-from keras.callbacks import EarlyStopping, Callback
+from tensorflow.keras.optimizers.schedules import InverseTimeDecay
+from tensorflow.keras.callbacks import EarlyStopping, Callback
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
-from keras.losses import SparseCategoricalCrossentropy
-from keras.metrics import Precision, Recall
-from keras.optimizers import Adam
-from keras.models import load_model
-from keras import layers
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
+from tensorflow.keras.metrics import Precision, Recall
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import load_model
+from tensorflow.keras import layers
 from glove import Corpus, Glove
 from abc import ABC
-import keras.backend as K
+import tensorflow.keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
@@ -20,15 +20,13 @@ try:
     from .metrics import FScore
     from .layers import (
             TransformerBlock,
-            TokenAndPositionEmbedding,
-            BCClassificationHead)
+            TokenAndPositionEmbedding)
 except (SystemError, ImportError):
     from datagen import TupleSentenceGenerator, ConcatSentenceGenerator
     from metrics import FScore
     from layers import (
             TransformerBlock,
-            TokenAndPositionEmbedding,
-            BCClassificationHead)
+            TokenAndPositionEmbedding)
 
 class BaseModel(ABC):
     '''Abstract Model class that gathers most of the training logic'''
@@ -225,6 +223,7 @@ class Transformer(BaseModel):
             "n_heads": 8,
             "dropout": 0.2,
             "att_dropout": 0.1,
+            "batch_size": 512,
         }
 
     def get_generator(self, batch_size, shuffle):
@@ -257,7 +256,7 @@ class Transformer(BaseModel):
         else:
             outputs = layers.Dense(settings["n_classes"], activation='sigmoid')(x)
 
-        model = keras.Model(inputs=inputs, outputs=outputs)
+        model = tf.keras.Model(inputs=inputs, outputs=outputs)
         model.compile(
                 optimizer=Adam(learning_rate=settings["scheduler"],
                                clipnorm=settings["clipnorm"]),

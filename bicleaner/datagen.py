@@ -1,9 +1,9 @@
-from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 import sentencepiece as sp
+import tensorflow as tf
 import numpy as np
-import keras
 
-class TupleSentenceGenerator(keras.utils.Sequence):
+class TupleSentenceGenerator(tf.keras.utils.Sequence):
     '''
     Generates batches of tuples of sentences and its labels if they have
     '''
@@ -92,7 +92,7 @@ class TupleSentenceGenerator(keras.utils.Sequence):
             return self.tokenize(data)
 
 
-class ConcatSentenceGenerator(keras.utils.Sequence):
+class ConcatSentenceGenerator(tf.keras.utils.Sequence):
     '''
     Generates batches of concatenated sentences and its labels if they have
     This generator is designed to be used with Transformers library

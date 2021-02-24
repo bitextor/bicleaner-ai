@@ -7,10 +7,10 @@ The MIT License (MIT)
 Copyright (C) 2016-2020 ExplosionAI GmbH, 2016 spaCy GmbH, 2015 Matthew Honnibal
 '''
 
-from keras.optimizers import Adam
-from keras.metrics import Precision, Recall
-from keras import layers, Model, models
-from keras import backend as K
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.metrics import Precision, Recall
+from tensorflow.keras import layers, Model, models
+from tensorflow.keras import backend as K
 import numpy as np
 
 try:
