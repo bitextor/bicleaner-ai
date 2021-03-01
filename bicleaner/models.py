@@ -38,9 +38,13 @@ class BaseModel(ABC):
         self.vocab = None
         self.model = None
         self.wv = None
-        self.separator = None
 
         self.settings = {
+            "separator": None,
+            "bos_id": -1,
+            "eos_id": -1,
+            "pad_id": 0,
+            "unk_id": 1,
             "emb_dim": 300,
             "emb_trainable": False,
             "emb_epochs": 10,
@@ -116,11 +120,11 @@ class BaseModel(ABC):
                       vocab_size=self.settings["vocab_size"],
                       input_sentence_size=5000000,
                       shuffle_input_sentence=True,
-                      pad_id=0,
-                      unk_id=1,
-                      bos_id=-1,
-                      eos_id=-1,
-                      user_defined_symbols=self.separator,
+                      pad_id=self.settings["pad_id"],
+                      unk_id=self.settings["unk_id"],
+                      bos_id=self.settings["bos_id"],
+                      eos_id=self.settings["eos_id"],
+                      user_defined_symbols=self.settings["separator"],
                       num_threads=threads,
                       minloglevel=1)
         monolingual.seek(0)
@@ -200,6 +204,11 @@ class DecomposableAttention(BaseModel):
     def __init__(self, directory):
         super(DecomposableAttention, self).__init__(directory)
 
+        self.settings = {
+            **self.settings,
+            "self_attention": True,
+        }
+
     def get_generator(self, batch_size, shuffle):
         return TupleSentenceGenerator(
                     self.spm, shuffle=shuffle,
@@ -218,9 +227,14 @@ class Transformer(BaseModel):
         self.separator = '[SEP]'
         self.settings = {
             **self.settings,
+            "separator": '[SEP]',
+            "pad_id": 0,
+            "bos_id": 1,
+            "eos_id": 2,
+            "unk_id": 3,
             "maxlen": 200,
-            "n_hidden": 200,
-            "n_heads": 8,
+            "n_hidden": 100,
+            "n_heads": 4,
             "dropout": 0.2,
             "att_dropout": 0.1,
             "batch_size": 512,
