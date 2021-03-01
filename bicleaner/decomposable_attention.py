@@ -35,20 +35,35 @@ def build_model(vectors, settings):
     b = embed(input2)
 
     # step 1: attend
+    # self-attend
+    if settings["self_attention"]:
+        S_a = create_feedforward(nr_hidden, dropout=settings["dropout"])
+        S_b = create_feedforward(nr_hidden, dropout=settings["dropout"])
+        self_att_a = layers.dot([S_a(a), S_a(a)], axes=-1)
+        self_att_b = layers.dot([S_b(b), S_b(b)], axes=-1)
+        self_norm_a = layers.Lambda(normalizer(1))(self_att_a)
+        self_norm_b = layers.Lambda(normalizer(1))(self_att_b)
+        a_p = layers.dot([self_norm_a, a], axes=1)
+        b_p = layers.dot([self_norm_b, b], axes=1)
+    else:
+        a_p = a
+        b_p = b
+
+    # attend
     F = create_feedforward(nr_hidden, dropout=settings["dropout"])
-    att_weights = layers.dot([F(a), F(b)], axes=-1)
+    att_weights = layers.dot([F(a_p), F(b_p)], axes=-1)
 
     G = create_feedforward(nr_hidden)
 
     if settings["entail_dir"] == "both":
         norm_weights_a = layers.Lambda(normalizer(1))(att_weights)
         norm_weights_b = layers.Lambda(normalizer(2))(att_weights)
-        alpha = layers.dot([norm_weights_a, a], axes=1)
-        beta = layers.dot([norm_weights_b, b], axes=1)
+        alpha = layers.dot([norm_weights_a, a_p], axes=1)
+        beta = layers.dot([norm_weights_b, b_p], axes=1)
 
         # step 2: compare
-        comp1 = layers.concatenate([a, beta])
-        comp2 = layers.concatenate([b, alpha])
+        comp1 = layers.concatenate([a_p, beta])
+        comp2 = layers.concatenate([b_p, alpha])
         v1 = layers.TimeDistributed(G)(comp1)
         v2 = layers.TimeDistributed(G)(comp2)
 
@@ -76,9 +91,11 @@ def build_model(vectors, settings):
     H = create_feedforward(nr_hidden, dropout=settings["dropout"])
     out = H(concat)
     if settings['loss'] == 'categorical_crossentropy':
-        out = layers.Dense(nr_class, activation="softmax")(out)
+        out = layers.Dense(nr_class)(out)
+        out = layers.Activation('softmax', dtype='float32')(out)
     else:
-        out = layers.Dense(nr_class, activation="sigmoid")(out)
+        out = layers.Dense(nr_class)(out)
+        out = layers.Activation('sigmoid', dtype='float32')(out)
 
     model = Model([input1, input2], out)
 
