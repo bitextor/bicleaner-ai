@@ -16,14 +16,20 @@ import decomposable_attention
 import logging
 
 try:
-    from .datagen import TupleSentenceGenerator, ConcatSentenceGenerator
     from .metrics import FScore
+    from .datagen import (
+            TupleSentenceGenerator,
+            ConcatSentenceGenerator,
+            SentenceEncoder)
     from .layers import (
             TransformerBlock,
             TokenAndPositionEmbedding)
 except (SystemError, ImportError):
-    from datagen import TupleSentenceGenerator, ConcatSentenceGenerator
     from metrics import FScore
+    from datagen import (
+            TupleSentenceGenerator,
+            ConcatSentenceGenerator,
+            SentenceEncoder)
     from layers import (
             TransformerBlock,
             TokenAndPositionEmbedding)
@@ -45,6 +51,9 @@ class BaseModel(ABC):
             "eos_id": -1,
             "pad_id": 0,
             "unk_id": 1,
+            "add_bos": False,
+            "add_eos": False,
+            "enable_sampling": False,
             "emb_dim": 300,
             "emb_trainable": False,
             "emb_epochs": 10,
@@ -91,7 +100,10 @@ class BaseModel(ABC):
     def load_spm(self):
         '''Loads SentencePiece model and vocabulary from model directory'''
         logging.info("Loading SentencePiece model")
-        self.spm = sp.SentencePieceProcessor(model_file=self.dir+'/spm.model')
+        self.spm = SentenceEncoder(self.dir+'/spm.model',
+                                   add_bos=self.settings["add_bos"],
+                                   add_eos=self.settings["add_eos"],
+                                   enable_sampling=self.settings["enable_sampling"])
         self.vocab = {}
         with open(self.dir + '/spm.vocab') as vocab_file:
             for i, line in enumerate(vocab_file):
@@ -232,13 +244,21 @@ class Transformer(BaseModel):
             "bos_id": 1,
             "eos_id": 2,
             "unk_id": 3,
+            "add_bos": True,
+            "add_eos": True,
             "maxlen": 200,
-            "n_hidden": 100,
+            "n_hidden": 200,
             "n_heads": 4,
             "dropout": 0.2,
-            "att_dropout": 0.1,
-            "batch_size": 512,
+            "att_dropout": 0.5,
+            "batch_size": 1024,
+            "lr": 5e-4,
+            "clipnorm": 1.0,
         }
+        scheduler = InverseTimeDecay(self.settings["lr"],
+                         decay_steps=self.settings["steps_per_epoch"]//4,
+                         decay_rate=0.2)
+        self.settings["scheduler"] = scheduler
 
     def get_generator(self, batch_size, shuffle):
         return ConcatSentenceGenerator(

@@ -3,12 +3,35 @@ import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
 
+class SentenceEncoder(object):
+    '''
+    Wrapper of a SentencePiece model
+    Ensure that all the encode calls us the same special tokens config
+    '''
+
+    def __init__(self, model_file, add_bos=False,
+                 add_eos=False, enable_sampling=False):
+        self.encoder = sp.SentencePieceProcessor(model_file=model_file)
+        self.add_bos = add_bos
+        self.add_eos = add_eos
+        self.enable_sampling = enable_sampling
+
+    def encode(self, data, out_type=int):
+        '''Wrapper function of the SentencePiece encode method'''
+        return self.encoder.encode(data,
+                        out_type=out_type,
+                        add_bos=self.add_bos,
+                        add_eos=self.add_eos,
+                        enable_sampling=self.enable_sampling,
+                        alpha=0.1)
+
+
 class TupleSentenceGenerator(tf.keras.utils.Sequence):
     '''
     Generates batches of tuples of sentences and its labels if they have
     '''
 
-    def __init__(self, tokenizer,
+    def __init__(self, encoder: SentenceEncoder,
             batch_size=64, maxlen=50, shuffle=False):
         self.batch_size = batch_size
         self.maxlen = maxlen
@@ -18,7 +41,7 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
         self.x1 = None
         self.x2 = None
         self.y = None
-        self.tok = tokenizer
+        self.encoder = encoder
 
 
     def __len__(self):
@@ -65,11 +88,11 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
         else:
             data = source
 
-        self.x1 = pad_sequences(self.__tokenize(data[0]),
+        self.x1 = pad_sequences(self.encoder.encode(data[0]),
                                 padding='post',
                                 truncating='post',
                                 maxlen=self.maxlen)
-        self.x2 = pad_sequences(self.__tokenize(data[1]),
+        self.x2 = pad_sequences(self.encoder.encode(data[1]),
                                 padding='post',
                                 truncating='post',
                                 maxlen=self.maxlen)
@@ -81,15 +104,6 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
         self.index = np.arange(0, self.num_samples)
         if self.shuffle:
             np.random.shuffle(self.index) # Preventive shuffle in case data comes ordered
-
-    def __tokenize(self, data):
-        '''Tokenizer wrapper function'''
-        if isinstance(self.tok, sp.SentencePieceProcessor):
-            return self.tok.encode(data)
-        elif isinstance(self.tok, transformers.PreTrainedTokenizer):
-            return self.tokenizer(data)['input_ids']
-        else:
-            return self.tokenize(data)
 
 
 class ConcatSentenceGenerator(tf.keras.utils.Sequence):
@@ -150,7 +164,7 @@ class ConcatSentenceGenerator(tf.keras.utils.Sequence):
                 for line in file_:
                     fields = line.split('\t')
                     # Concatenate sentences if tokenizer is SentencePiece
-                    if isinstance(self.tok, sp.SentencePieceProcessor):
+                    if isinstance(self.tok, SentenceEncoder):
                         data[0].append(fields[0] + self.separator + fields[1])
                         data[2].append(fields[2].strip())
                     else:
@@ -160,7 +174,7 @@ class ConcatSentenceGenerator(tf.keras.utils.Sequence):
         else:
             data = source
 
-        if isinstance(self.tok, sp.SentencePieceProcessor):
+        if isinstance(self.tok, SentenceEncoder):
             # Tokenize already concatenated sentences with SentencePiece
             self.x = pad_sequences(self.tok.encode(data[0]),
                                     padding="post",
@@ -174,6 +188,9 @@ class ConcatSentenceGenerator(tf.keras.utils.Sequence):
                                max_length=self.maxlen)
             self.x = np.array(dataset["input_ids"])
             # self.att_mask = np.array(dataset["attention_mask"])
+
+        import logging
+        logging.info(self.x[20:30])
 
         self.num_samples = self.x.shape[0]
         if data[2] is None:

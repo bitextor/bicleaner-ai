@@ -34,7 +34,11 @@ class TransformerBlock(layers.Layer):
     '''Transformer block as a Keras layer'''
     def __init__(self, embed_dim, num_heads, ff_dim, dropout=0.1):
         super(TransformerBlock, self).__init__()
-        self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        # Divide key dimension by the number of heads
+        # so that each head is projected to a lower dimension
+        # then gets concatenated
+        self.att = layers.MultiHeadAttention(num_heads=num_heads,
+                                             key_dim=embed_dim//num_heads)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
         )
