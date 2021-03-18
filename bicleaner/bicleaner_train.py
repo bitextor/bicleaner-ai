@@ -14,14 +14,14 @@ import shutil
 
 #Allows to load modules while inside or outside the package  
 try:
-    from .models import DecomposableAttention, Transformer
+    from .models import DecomposableAttention, Transformer, BCXLMRoberta
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
     from .training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
-    from models import DecomposableAttention, Transformer
+    from models import DecomposableAttention, Transformer, BCXLMRoberta
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
@@ -152,13 +152,13 @@ def perform_training(args):
 
     logging.info("Start training.")
 
-    model = DecomposableAttention(args.model_dir)
+    model = BCXLMRoberta(args.model_dir)
     # Load spm and embeddings if already trained
-    try:
-        model.load_spm()
-        model.load_embed()
-    except:
-        model.train_vocab(args.mono_train, args.processes)
+    # try:
+    #     model.load_spm()
+    #     model.load_embed()
+    # except:
+    #     model.train_vocab(args.mono_train, args.processes)
 
     y_true, y_pred = model.train(train_sentences, dev_sentences)
 
