@@ -55,7 +55,7 @@ class BaseModel(ABC):
             "add_eos": False,
             "enable_sampling": False,
             "emb_dim": 300,
-            "emb_trainable": False,
+            "emb_trainable": True,
             "emb_epochs": 10,
             "window": 15,
             "vocab_size": 32000,
@@ -69,12 +69,12 @@ class BaseModel(ABC):
             "steps_per_epoch": 4096,
             "patience": 20,
             "loss": "binary_crossentropy",
-            "lr": 5e-4,
+            "lr": 1e-4,
             "clipnorm": 0.5,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
-                         decay_steps=self.settings["steps_per_epoch"]//4,
-                         decay_rate=0.2)
+                         decay_steps=self.settings["steps_per_epoch"]*2,
+                         decay_rate=0.9)
         # scheduler = tf.keras.experimental.CosineDecayRestarts(
         #         self.settings["lr"],
         #         self.settings["steps_per_epoch"]*4,
@@ -218,7 +218,7 @@ class DecomposableAttention(BaseModel):
 
         self.settings = {
             **self.settings,
-            "self_attention": True,
+            "self_attention": False,
         }
 
     def get_generator(self, batch_size, shuffle):

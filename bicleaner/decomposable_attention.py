@@ -39,12 +39,14 @@ def build_model(vectors, settings):
     if settings["self_attention"]:
         S_a = create_feedforward(nr_hidden, dropout=settings["dropout"])
         S_b = create_feedforward(nr_hidden, dropout=settings["dropout"])
-        self_att_a = layers.dot([S_a(a), S_a(a)], axes=-1)
-        self_att_b = layers.dot([S_b(b), S_b(b)], axes=-1)
-        self_norm_a = layers.Lambda(normalizer(1))(self_att_a)
-        self_norm_b = layers.Lambda(normalizer(1))(self_att_b)
-        a_p = layers.dot([self_norm_a, a], axes=1)
-        b_p = layers.dot([self_norm_b, b], axes=1)
+        a_p = layers.Attention()([S_a(a), S_a(a)])
+        b_p = layers.Attention()([S_b(b), S_b(b)])
+        # self_att_a = layers.dot([S_a(a), S_a(a)], axes=-1)
+        # self_att_b = layers.dot([S_b(b), S_b(b)], axes=-1)
+        # self_norm_a = layers.Lambda(normalizer(1))(self_att_a)
+        # self_norm_b = layers.Lambda(normalizer(1))(self_att_b)
+        # a_p = layers.dot([self_norm_a, a], axes=1)
+        # b_p = layers.dot([self_norm_b, b], axes=1)
     else:
         a_p = a
         b_p = b
