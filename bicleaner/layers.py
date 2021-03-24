@@ -64,12 +64,14 @@ class BCClassificationHead(layers.Layer):
         self.dense = layers.Dense(
             config.hidden_size,
             kernel_initializer=get_initializer(config.initializer_range),
-            activation=config.hidden_activation,
+            activation='tanh',
             name="dense",
         )
         self.dropout = layers.Dropout(config.hidden_dropout_prob)
         self.out_proj = layers.Dense(
-            config.num_labels, kernel_initializer=get_initializer(config.initializer_range), name="out_proj"
+            config.num_labels,
+            kernel_initializer=get_initializer(config.initializer_range),
+            name="out_proj"
         )
 
     def call(self, features, training=False):

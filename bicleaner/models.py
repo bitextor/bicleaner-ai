@@ -1,7 +1,7 @@
-from transformers import TFXLMRobertaForSequenceClassification, RobertaTokenizer
+from transformers import TFXLMRobertaForSequenceClassification, XLMRobertaTokenizer
 from transformers.optimization_tf import create_optimizer
-from keras.optimizers.schedules import InverseTimeDecay
-from keras.callbacks import EarlyStopping, Callback
+from tensorflow.keras.optimizers.schedules import InverseTimeDecay
+from tensorflow.keras.callbacks import EarlyStopping, Callback
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.metrics import Precision, Recall
@@ -25,7 +25,8 @@ try:
             SentenceEncoder)
     from .layers import (
             TransformerBlock,
-            TokenAndPositionEmbedding)
+            TokenAndPositionEmbedding,
+            BCClassificationHead)
 except (SystemError, ImportError):
     from metrics import FScore
     from datagen import (
@@ -34,7 +35,8 @@ except (SystemError, ImportError):
             SentenceEncoder)
     from layers import (
             TransformerBlock,
-            TokenAndPositionEmbedding)
+            TokenAndPositionEmbedding,
+            BCClassificationHead)
 
 class BaseModel(ABC):
     '''Abstract Model class that gathers most of the training logic'''
@@ -308,7 +310,7 @@ class BCXLMRoberta(object):
 
         self.settings = {
             "model": 'jplu/tf-xlm-roberta-base',
-            "batch_size": 32,
+            "batch_size": 16,
             "maxlen": 200,
             "n_classes": 2,
             "epochs": 10,
@@ -331,7 +333,7 @@ class BCXLMRoberta(object):
                 weight_decay_rate=self.settings["decay_rate"])
         self.settings["scheduler"] = scheduler
         self.settings["optimizer"] = optimizer
-        self.tokenizer = RobertaTokenizer.from_pretrained(self.settings["model"])
+        self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.settings["model"])
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -346,30 +348,35 @@ class BCXLMRoberta(object):
         # so the tokenizer adds the corresponding special tokens
         sentences = self.tokenizer(data[0], data[1],
                                       padding=True,
-                                      truncation=True)
+                                      truncation=True,
+                                      max_length=self.settings["maxlen"])
 
-        return tf.data.Dataset.from_tensor_slices((dict(sentences),
+        ds = tf.data.Dataset.from_tensor_slices((dict(sentences),
                                                  data[2]))
+        ds = ds.shuffle(len(sentences))
+        return ds.batch(self.settings["batch_size"]).prefetch(5)
 
     def train(self, train_set, dev_set):
         logging.info("Vectorizing training set")
 
-        train_generator = ConcatSentenceGenerator(
-                            self.tokenizer,
-                            batch_size=self.settings["batch_size"],
-                            maxlen=self.settings["maxlen"],
-                            shuffle=True)
-        train_generator.load(train_set)
-        steps_per_epoch = min(len(train_generator),
-                              self.settings["steps_per_epoch"])
+        # train_generator = ConcatSentenceGenerator(
+        #                     self.tokenizer,
+        #                     batch_size=self.settings["batch_size"],
+        #                     maxlen=self.settings["maxlen"],
+        #                     shuffle=True)
+        # train_generator.load(train_set)
+        # steps_per_epoch = min(len(train_generator),
+        #                       self.settings["steps_per_epoch"])
 
-        dev_generator = ConcatSentenceGenerator(
-                            self.tokenizer,
-                            batch_size=self.settings["batch_size"],
-                            maxlen=self.settings["maxlen"],
-                            shuffle=False)
-        dev_generator.load(dev_set)
+        # dev_generator = ConcatSentenceGenerator(
+        #                     self.tokenizer,
+        #                     batch_size=self.settings["batch_size"],
+        #                     maxlen=self.settings["maxlen"],
+        #                     shuffle=False)
+        # dev_generator.load(dev_set)
 
+        train_ds = self.build_dataset(train_set)
+        dev_ds = self.build_dataset(dev_set)
 
         model_filename = self.dir + '/model.h5'
         earlystop = EarlyStopping(monitor='val_f1',
@@ -383,18 +390,26 @@ class BCXLMRoberta(object):
         with strategy.scope():
             self.model = BCXLMRobertaForSequenceClassification.from_pretrained(
                     self.settings['model'],
-                    num_labels=self.settings["n_classes"])
+                    num_labels=2)
             self.model.compile(optimizer=self.settings["optimizer"],
                     loss=SparseCategoricalCrossentropy(from_logits=True),
-                    metrics=[f1])
+                    #metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')])
+                    metrics=[FScore(name='f1', argmax=True)])
         self.model.summary()
-        self.model.fit(train_generator,
+        self.model.fit(train_ds,
                        epochs=self.settings["epochs"],
-                       steps_per_epoch=steps_per_epoch,
-                       validation_data=dev_generator,
-                       batch_size=self.settings["batch_size"],
+                       #steps_per_epoch=steps_per_epoch,
+                       validation_data=dev_ds,
                        callbacks=[earlystop],
                        verbose=1)
+
+        # self.model.fit(train_generator,
+        #                epochs=self.settings["epochs"],
+        #                steps_per_epoch=steps_per_epoch,
+        #                validation_data=dev_generator,
+        #                batch_size=self.settings["batch_size"],
+        #                callbacks=[earlystop],
+        #                verbose=1)
         self.model.save(model_filename)
 
         y_true = dev_generator.y
