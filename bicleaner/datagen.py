@@ -189,9 +189,6 @@ class ConcatSentenceGenerator(tf.keras.utils.Sequence):
             self.x = np.array(dataset["input_ids"])
             # self.att_mask = np.array(dataset["attention_mask"])
 
-        import logging
-        logging.info(self.x[20:30])
-
         self.num_samples = self.x.shape[0]
         if data[2] is None:
             self.y = np.zeros(self.num_samples)
