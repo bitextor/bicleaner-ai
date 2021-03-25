@@ -59,15 +59,15 @@ class TransformerBlock(layers.Layer):
 class BCClassificationHead(layers.Layer):
     """Head for sentence-level classification tasks."""
 
-    def __init__(self, config, **kwargs):
+    def __init__(self, config, hidden_size, dropout, activation, **kwargs):
         super().__init__(**kwargs)
         self.dense = layers.Dense(
-            config.hidden_size,
+            hidden_size,
             kernel_initializer=get_initializer(config.initializer_range),
-            activation='tanh',
+            activation=activation,
             name="dense",
         )
-        self.dropout = layers.Dropout(config.hidden_dropout_prob)
+        self.dropout = layers.Dropout(dropout)
         self.out_proj = layers.Dense(
             config.num_labels,
             kernel_initializer=get_initializer(config.initializer_range),

@@ -310,12 +310,15 @@ class BCXLMRoberta(object):
 
         self.settings = {
             "model": 'jplu/tf-xlm-roberta-base',
-            "batch_size": 16,
+            "batch_size": 128,
             "maxlen": 150,
             "n_classes": 2,
             "epochs": 10,
             "steps_per_epoch": 20000,
             "patience": 5,
+            "dropout": 0.1,
+            "n_hidden": 2048,
+            "activation": 'relu',
             "loss": "binary_crossentropy",
             "lr": 2e-6,
             "decay_rate": 0.1,
@@ -375,9 +378,6 @@ class BCXLMRoberta(object):
                             shuffle=False)
         dev_generator.load(dev_set)
 
-        # train_ds = self.build_dataset(train_set)
-        # dev_ds = self.build_dataset(dev_set)
-
         model_filename = self.dir + '/model.h5'
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
@@ -390,19 +390,15 @@ class BCXLMRoberta(object):
         with strategy.scope():
             self.model = BCXLMRobertaForSequenceClassification.from_pretrained(
                     self.settings['model'],
-                    num_labels=2)
+                    num_labels=2,
+                    head_hidden_size=self.settings["n_hidden"],
+                    head_dropout=self.settings["dropout"],
+                    head_activation=self.settings["activation"])
             self.model.compile(optimizer=self.settings["optimizer"],
                     loss=SparseCategoricalCrossentropy(from_logits=True),
                     #metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')])
                     metrics=[FScore(name='f1', argmax=True)])
         self.model.summary()
-        # self.model.fit(train_ds,
-        #                epochs=self.settings["epochs"],
-        #                #steps_per_epoch=steps_per_epoch,
-        #                validation_data=dev_ds,
-        #                callbacks=[earlystop],
-        #                verbose=1)
-
         self.model.fit(train_generator,
                        epochs=self.settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
@@ -425,6 +421,9 @@ class BCXLMRoberta(object):
 class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassification):
     """Model for sentence-level classification tasks."""
 
-    def __init__(self, config):
+    def __init__(self, config, head_hidden_size, head_dropout, head_activation):
         super().__init__(config)
-        self.classifier = BCClassificationHead(config)
+        self.classifier = BCClassificationHead(config,
+                                               head_hidden_size,
+                                               head_dropout,
+                                               head_activation)
