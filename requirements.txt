@@ -14,5 +14,5 @@ tensorflow==2.4.1
 glove-python-binary==0.2.0
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.12.1
-transformers==4.2.2
+transformers==4.4.2
 psutil==5.8.0
