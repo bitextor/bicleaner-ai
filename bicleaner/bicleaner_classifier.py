@@ -11,12 +11,10 @@ from timeit import default_timer
 try:
     from .classify import classify, argument_parser, load_metadata
     from .util import logging_setup
-    from .bicleaner_hardrules import load_lm_filter
     from .tokenizer import Tokenizer
 except (ImportError, SystemError):
     from classify import classify, argument_parser, load_metadata
     from util import logging_setup
-    from bicleaner_hardrules import load_lm_filter
     from tokenizer import Tokenizer
 
 logging_level = 0
@@ -47,12 +45,6 @@ def perform_classification(args):
     time_start = default_timer()
     logging.info("Starting process")
 
-    # Load LM
-    if not args.disable_lm_filter:
-        lm_filter = load_lm_filter(args.source_lang, args.target_lang, args.metadata_yaml, args.source_tokenizer_command, args.target_tokenizer_command)
-    else:
-        lm_filter = None
-
     if not args.disable_porn_removal:
         if args.metadata_yaml['porn_removal_side'] == 'tl':
             porn_tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
@@ -62,7 +54,7 @@ def perform_classification(args):
         porn_tokenizer = None
 
     # Score sentences
-    nline = classify(args, args.input, args.output, lm_filter, porn_tokenizer)
+    nline = classify(args, args.input, args.output, porn_tokenizer)
 
     # Stats
     logging.info("Finished")

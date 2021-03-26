@@ -57,13 +57,9 @@ def argument_parser():
 
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
     groupO.add_argument('-d', '--discarded_tus', type=argparse.FileType('w'), default=None, help="TSV file with discarded TUs. Discarded TUs by the classifier are written in this file in TSV file.")
-    groupO.add_argument('--lm_threshold',type=check_positive_between_zero_and_one, default=0.5, help="Threshold for language model fluency scoring. All TUs whose LM fluency score falls below the threshold will are removed (classifier score set to 0), unless the option --keep_lm_result set.")
-    #groupO.add_argument('--keep_lm_result',action='store_true', help="Add an additional column to the results with the language model fluency score and do not discard any TU based on that score.")
-     
     groupO.add_argument('--score_only',action='store_true', help="Only output one column which is the bicleaner score", default=False)
      
     groupO.add_argument('--disable_hardrules',action = 'store_true', help = "Disables the bicleaner_hardrules filtering (only bicleaner_classify is applied)")
-    groupO.add_argument('--disable_lm_filter', action = 'store_true', help = "Disables LM filtering")
     groupO.add_argument('--disable_porn_removal', default=False, action='store_true', help="Don't apply porn removal")
     groupO.add_argument('--disable_minimal_length', default=False, action='store_true', help="Don't apply minimal length rule")
 
@@ -77,7 +73,7 @@ def argument_parser():
     return parser, groupO, groupL
 
 
-# Load metadata, classifier, lm_filter and porn_removal
+# Load metadata, classifier, porn_removal
 def load_metadata(args, parser):
     try:
         # Load YAML
@@ -107,14 +103,6 @@ def load_metadata(args, parser):
         logging.info("Accuracy histogram: {}".format(metadata_yaml["accuracy_histogram"]))
         logging.info("Ideal threshold: {:1.1f}".format(threshold))
         metadata_yaml["threshold"] = threshold
-
-        # Try loading metadata for LM filtering
-        if not args.disable_lm_filter:
-            if not ("source_lm" in metadata_yaml and "target_lm" in metadata_yaml):
-                args.disable_lm_filter = True
-                logging.warning("LM filter not present in metadata, disabling.")
-        else:
-            logging.info("LM filtering disabled")
 
         # Try loading porn_removal model
         if not args.disable_porn_removal:
@@ -152,7 +140,7 @@ def load_metadata(args, parser):
 
 # Classify sentences from input and place them at output
 # that can be either files or stdin/stdout
-def classify(args, input, output, lm_filter, porn_tokenizer):
+def classify(args, input, output, porn_tokenizer):
     nline = 0
     buf_sent = []
     buf_sent_sl = []
@@ -176,7 +164,7 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
         buf_sent.append(line)
 
         # Buffer sentences that are not empty and pass hardrules
-        if sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, lm_filter, args.porn_removal, porn_tokenizer)== False):
+        if sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, None, args.porn_removal, porn_tokenizer)== False):
             buf_score.append(1)
             buf_sent_sl.append(sl_sentence)
             buf_sent_tl.append(tl_sentence)

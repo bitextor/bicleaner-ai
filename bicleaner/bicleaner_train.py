@@ -18,14 +18,14 @@ try:
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from .training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
+    from .training import build_noise, load_tuple_sentences, write_metadata, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from models import DecomposableAttention, Transformer, BCXLMRoberta
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
-    from training import build_noise, load_tuple_sentences, write_metadata, train_fluency_filter, train_porn_removal
+    from training import build_noise, load_tuple_sentences, write_metadata, train_porn_removal
     from tokenizer import Tokenizer
 
 logging_level = 0
@@ -67,17 +67,6 @@ def initialization():
     groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence")
     groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
     groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
-
-    #For LM filtering
-    groupO.add_argument('--noisy_examples_file_sl', type=str, help="File with noisy text in the SL. These are used to estimate the perplexity of noisy text.")
-    groupO.add_argument('--noisy_examples_file_tl', type=str, help="File with noisy text in the TL. These are used to estimate the perplexity of noisy text.")
-    groupO.add_argument('--lm_dev_size', type=check_positive_or_zero, default=2000, help="Number of sentences to be removed from clean text before training LMs. These are used to estimate the perplexity of clean text.")
-    groupO.add_argument('--lm_file_sl', type=str, help="SL language model output file.")
-    groupO.add_argument('--lm_file_tl', type=str, help="TL language model output file.")
-    groupO.add_argument('--lm_training_file_sl', type=str, help="SL text from which the SL LM is trained. If this parameter is not specified, SL LM is trained from the SL side of the input file, after removing --lm_dev_size sentences.")
-    groupO.add_argument('--lm_training_file_tl', type=str, help="TL text from which the TL LM is trained. If this parameter is not specified, TL LM is trained from the TL side of the input file, after removing --lm_dev_size sentences.")
-    groupO.add_argument('--lm_clean_examples_file_sl', type=str, help="File with clean text in the SL. Used to estimate the perplexity of clean text. This option must be used together with --lm_training_file_sl and both files must not have common sentences. This option replaces --lm_dev_size.")
-    groupO.add_argument('--lm_clean_examples_file_tl', type=str, help="File with clean text in the TL. Used to estimate the perplexity of clean text. This option must be used together with --lm_training_file_tl and both files must not have common sentences. This option replaces --lm_dev_size.")
 
     groupO.add_argument('--porn_removal_train', type=argparse.FileType('r'), help="File with training dataset for FastText classifier. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.")
     groupO.add_argument('--porn_removal_test', type=argparse.FileType('r'), help="Test set to compute precision and accuracy of the porn removal classifier")
