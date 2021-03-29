@@ -368,20 +368,6 @@ def remove_words_randomly_from_sentence(sentence):
         del sentence[wordpos]
     return sentence
 
-# Load sentences from file in form of tuples (sent1, sent1, label)
-def load_tuple_sentences(input, label, nlines=None):
-    sents = ([], [], [])
-    for i, line in enumerate(input):
-        # Read until nlines is reached
-        if nlines is not None and i == (nlines - 1):
-            break
-        parts = line.rstrip("\n").split('\t')
-        sents[0].append(parts[0])
-        sents[1].append(parts[1])
-        sents[2].append(label)
-
-    return sents
-
 # Calculate precision, recall and accuracy over the 0.0,1.0,0.1 histogram of
 # good and  wrong alignments
 def precision_recall(hgood, hwrong):
@@ -411,7 +397,7 @@ def precision_recall(hgood, hwrong):
     return precision, recall, accuracy
 
 
-def repr_right(numeric_list, numeric_fmt = "{:1.7f}"):
+def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
     result_str = ["["]
     for i in range(len(numeric_list)):
         result_str.append(numeric_fmt.format(numeric_list[i]))
@@ -422,34 +408,8 @@ def repr_right(numeric_list, numeric_fmt = "{:1.7f}"):
     return "".join(result_str)
 
 
-# Check if all the files are in the same directory as metadata
-def check_relative_paths(args):
-    if args.disable_relative_paths:
-        return False
-
-    checkable = [
-            '_dictionary',
-            'source_word_freqs',
-            'target_word_freqs',
-            'classifier',
-            'lm_file',
-            'porn_removal_file'
-        ]
-    yaml_path = os.path.dirname(os.path.abspath(args.metadata.name))
-
-    for var, value in vars(args).items():
-        for c in checkable:
-            if var.find(c) != -1 and value is not None:
-                path = value if isinstance(value, str) else value.name
-                dirname = os.path.dirname(os.path.abspath(path))
-                if dirname != yaml_path:
-                    logging.warning("{} is not in the same directory as metadata. Absolute paths will be used instead of relative.".format(var))
-                    return False
-    return True
-
-
 # Write YAML with the training parameters and quality estimates
-def write_metadata(myargs, hgood, hwrong):
+def write_metadata(myargs, classifier, hgood, hwrong):
     out = myargs.metadata
 
     precision, recall, accuracy = precision_recall(hgood, hwrong)
@@ -464,16 +424,10 @@ def write_metadata(myargs, hgood, hwrong):
     logging.debug(recall_hist)
     logging.debug(accuracy_hist)
 
-    if check_relative_paths(myargs):
-        source_word_freqs = os.path.basename(myargs.source_word_freqs.name)
-        target_word_freqs = os.path.basename(myargs.target_word_freqs.name)
-        if myargs.porn_removal_file is not None:
-            porn_removal_file = os.path.basename(myargs.porn_removal_file)
-    else:
-        source_word_freqs = os.path.abspath(myargs.source_word_freqs.name)
-        target_word_freqs = os.path.abspath(myargs.target_word_freqs.name)
-        if myargs.porn_removal_file is not None:
-            porn_removal_file = os.path.abspath(myargs.porn_removal_file)
+    source_word_freqs = os.path.basename(myargs.source_word_freqs.name)
+    target_word_freqs = os.path.basename(myargs.target_word_freqs.name)
+    if myargs.porn_removal_file is not None:
+        porn_removal_file = os.path.basename(myargs.porn_removal_file)
 
     # Writing it by hand (not using YAML libraries) to preserve the order
     out.write("source_lang: {}\n".format(myargs.source_lang))
@@ -486,8 +440,6 @@ def write_metadata(myargs, hgood, hwrong):
     out.write(recall_hist)
     out.write(accuracy_hist)
 
-    out.write("disable_lang_ident: {}\n".format(myargs.disable_lang_ident))
-
     if myargs.porn_removal_file is not None and myargs.porn_removal_train is not None:
         out.write("porn_removal_file: {}\n".format(porn_removal_file))
         out.write("porn_removal_side: {}\n".format(myargs.porn_removal_side))
@@ -496,3 +448,17 @@ def write_metadata(myargs, hgood, hwrong):
         out.write("source_tokenizer_command: {}\n".format(myargs.source_tokenizer_command))
     if myargs.target_tokenizer_command is not None:
         out.write("target_tokenizer_command: {}\n".format(myargs.target_tokenizer_command))
+
+    # Save vocabulary files if the classifier has them
+    for file_attr in ['spm_file', 'wv_file', 'vocab_file']:
+        if hasattr(classifier, file_attr):
+            out.write(file_attr + f": {getattr(classifier, file_attr)}\n")
+    # Save classifier
+    out.write(f"classifier_file: {classifier.model_file}\n")
+
+    # Save classifier train settings
+    out.write("classifier_settings:\n")
+    for key in sorted(classifier.settings.keys()):
+        # Don't print objects
+        if type(classifier.settings[key]) in [int, str]:
+            out.write("    " + key + ": " + str(classifier.settings[key]) + "\n")

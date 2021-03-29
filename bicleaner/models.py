@@ -41,13 +41,19 @@ except (SystemError, ImportError):
 class BaseModel(ABC):
     '''Abstract Model class that gathers most of the training logic'''
 
-    def __init__(self, directory):
+    def __init__(self, directory, batch_size=None, epochs=None,
+                 steps_per_epoch=None):
         self.dir = directory
         self.trained = False
         self.spm = None
         self.vocab = None
         self.model = None
         self.wv = None
+        self.wv_file = 'glove.vectors'
+        self.spm_prefix = 'spm'
+        self.spm_file = self.spm_prefix + '.model'
+        self.vocab_file = self.spm_prefix + '.vocab'
+        self.model_file = 'model.h5'
 
         self.settings = {
             "separator": None,
@@ -63,14 +69,14 @@ class BaseModel(ABC):
             "emb_epochs": 10,
             "window": 15,
             "vocab_size": 32000,
-            "batch_size": 1024,
+            "batch_size": 1024 if batch_size is None else batch_size,
             "maxlen": 100,
             "n_hidden": 200,
             "dropout": 0.2,
             "n_classes": 1,
             "entail_dir": "both",
-            "epochs": 200,
-            "steps_per_epoch": 4096,
+            "epochs": 200 if epochs is None else epochs,
+            "steps_per_epoch": 4096 if steps_per_epoch is None else steps_per_epoch,
             "patience": 20,
             "loss": "binary_crossentropy",
             "lr": 1e-4,
@@ -103,28 +109,28 @@ class BaseModel(ABC):
 
     def load_spm(self):
         '''Loads SentencePiece model and vocabulary from model directory'''
-        logging.info("Loading SentencePiece model")
-        self.spm = SentenceEncoder(self.dir+'/spm.model',
+        self.spm = SentenceEncoder(self.dir+'/'+self.spm_file,
                                    add_bos=self.settings["add_bos"],
                                    add_eos=self.settings["add_eos"],
                                    enable_sampling=self.settings["enable_sampling"])
         self.vocab = {}
-        with open(self.dir + '/spm.vocab') as vocab_file:
+        with open(self.dir + '/' + self.vocab_file) as vocab_file:
             for i, line in enumerate(vocab_file):
                 token = line.split('\t')[0]
                 self.vocab[token] = i
+        logging.info("Loaded SentencePiece model")
 
     def load_embed(self):
         '''Loads embeddings from model directory'''
         logging.info("Loading SentenePiece Glove vectors")
-        self.wv = Glove().load(self.dir + '/glove.vectors').word_vectors
+        self.wv = Glove().load(self.dir + '/' + self.wv_file).word_vectors
 
     def load(self):
         '''Loads the whole model'''
         self.load_spm()
         logging.info("Loading neural classifier")
         deps = { 'FScore': FScore }
-        self.model = load_model(self.dir + '/model.h5', custom_objects=deps)
+        self.model = load_model(self.dir+'/'+self.model_file, custom_objects=deps)
 
     def train_vocab(self, monolingual, threads):
         '''Trains SentencePiece model and embeddings with Glove'''
@@ -132,7 +138,7 @@ class BaseModel(ABC):
         logging.info("Training SentencePiece joint vocabulary")
         trainer = sp.SentencePieceTrainer
         trainer.train(sentence_iterator=monolingual,
-                      model_prefix=self.dir+'/spm',
+                      model_prefix=self.dir+'/'+self.spm_prefix,
                       vocab_size=self.settings["vocab_size"],
                       input_sentence_size=5000000,
                       shuffle_input_sentence=True,
@@ -162,7 +168,7 @@ class BaseModel(ABC):
                        epochs=self.settings["emb_epochs"],
                        no_threads=threads)
         self.wv = embeddings.word_vectors
-        embeddings.save(self.dir + '/glove.vectors')
+        embeddings.save(self.dir + '/' + self.wv_file)
 
     def train(self, train_set, dev_set):
         '''Trains the neural classifier'''
@@ -183,7 +189,7 @@ class BaseModel(ABC):
                                 shuffle=False)
         dev_generator.load(dev_set)
 
-        model_filename = self.dir + '/model.h5'
+        model_filename = self.dir + '/' + self.model_file
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
@@ -217,8 +223,8 @@ class BaseModel(ABC):
 class DecomposableAttention(BaseModel):
     '''Decomposable Attention model (Parikh et. al. 2016)'''
 
-    def __init__(self, directory):
-        super(DecomposableAttention, self).__init__(directory)
+    def __init__(self, directory, **kwargs):
+        super(DecomposableAttention, self).__init__(directory, **kwargs)
 
         self.settings = {
             **self.settings,
@@ -237,8 +243,8 @@ class DecomposableAttention(BaseModel):
 class Transformer(BaseModel):
     '''Basic Transformer model'''
 
-    def __init__(self, directory):
-        super(Transformer, self).__init__(directory)
+    def __init__(self, directory, **kwargs):
+        super(Transformer, self).__init__(directory, **kwargs)
 
         self.separator = '[SEP]'
         self.settings = {
@@ -255,7 +261,6 @@ class Transformer(BaseModel):
             "n_heads": 4,
             "dropout": 0.2,
             "att_dropout": 0.5,
-            "batch_size": 1024,
             "lr": 5e-4,
             "clipnorm": 1.0,
         }
@@ -304,17 +309,20 @@ class Transformer(BaseModel):
 
 
 class BCXLMRoberta(object):
-    def __init__(self, directory):
+    def __init__(self, directory, batch_size=None, epochs=None,
+                 steps_per_epoch=None):
+        self.dir = directory
         self.dir = directory
         self.model = None
+        self.model_file = 'model.tf'
 
         self.settings = {
             "model": 'jplu/tf-xlm-roberta-base',
-            "batch_size": 128,
+            "batch_size": 16 if batch_size is None else batch_size,
             "maxlen": 150,
             "n_classes": 2,
-            "epochs": 10,
-            "steps_per_epoch": 20000,
+            "epochs": 10 if epochs is None else epochs,
+            "steps_per_epoch": 40000 if steps_per_epoch is None else steps_per_epoch,
             "patience": 5,
             "dropout": 0.1,
             "n_hidden": 2048,
@@ -378,7 +386,7 @@ class BCXLMRoberta(object):
                             shuffle=False)
         dev_generator.load(dev_set)
 
-        model_filename = self.dir + '/model.h5'
+        model_filename = self.dir + '/' + self.model_file
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
