@@ -168,15 +168,16 @@ def perform_training(args):
     logging.info("End training.")
 
     # Compute histogram for test predictions
-    pos = 0
+    if len(y_pred.shape)==2:
+        # Flatten the array of predictions
+        y_pred = y_pred.flatten()
     good = []
     wrong = []
-    for pred in y_pred:
-        if y_true[pos] == 1:
-            good.append(pred[0])
+    for i, pred in enumerate(y_pred):
+        if y_true[i] == 1:
+            good.append(pred)
         else:
-            wrong.append(pred[0])
-        pos += 1
+            wrong.append(pred)
 
     hgood  = np.histogram(good,  bins = np.arange(0, 1.1, 0.1))[0].tolist()
     hwrong = np.histogram(wrong, bins = np.arange(0, 1.1, 0.1))[0].tolist()
