@@ -346,6 +346,24 @@ class BCXLMRoberta(object):
         self.settings["optimizer"] = optimizer
         self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(self.settings["model"])
 
+    def get_generator(self, batch_size, shuffle):
+        return ConcatSentenceGenerator(
+                self.tokenizer, shuffle=shuffle,
+                batch_size=batch_size,
+                maxlen=self.settings["maxlen"])
+
+    def load_model(self, model_file):
+        settings = self.settings
+
+        tf_model = BCXLMRobertaForSequenceClassification.from_pretrained(
+                        model_file,
+                        num_labels=2,
+                        head_hidden_size=settings["n_hidden"],
+                        head_dropout=settings["dropout"],
+                        head_activation=settings["activation"])
+
+        return tf_model
+
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
         data = [[], [], []]
@@ -395,17 +413,13 @@ class BCXLMRoberta(object):
         logging.info("Training classifier")
 
         strategy = tf.distribute.MirroredStrategy()
+        num_devices = strategy.num_replicas_in_sync
         with strategy.scope():
-            self.model = BCXLMRobertaForSequenceClassification.from_pretrained(
-                    self.settings['model'],
-                    num_labels=2,
-                    head_hidden_size=self.settings["n_hidden"],
-                    head_dropout=self.settings["dropout"],
-                    head_activation=self.settings["activation"])
+            self.model = self.load_model(self.settings["model"])
             self.model.compile(optimizer=self.settings["optimizer"],
-                    loss=SparseCategoricalCrossentropy(from_logits=True),
-                    #metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')])
-                    metrics=[FScore(name='f1', argmax=True)])
+                               loss=SparseCategoricalCrossentropy(
+                                        from_logits=True),
+                               metrics=[FScore(name='f1', argmax=True)])
         self.model.summary()
         self.model.fit(train_generator,
                        epochs=self.settings["epochs"],
@@ -414,11 +428,25 @@ class BCXLMRoberta(object):
                        batch_size=self.settings["batch_size"],
                        callbacks=[earlystop],
                        verbose=1)
-        self.model.save(model_filename)
+        self.model.save_pretrained(model_filename)
+
+        # predict returns empty output when using multi-gpu
+        # so, reloading model in single gpu is needed for prediction
+        del self.model
+        strategy = tf.distribute.OneDeviceStrategy('/gpu:0')
+        with strategy.scope():
+            self.model = self.load_model(model_filename)
+
+        # Divide the configured batch_size by the number of GPUs
+        # to determine batch_size for single GPU
+        # and reload development set with the new batch_size
+        batch_size = min(1, self.settings["batch_size"]//num_devices)
+        dev_generator.batch_size = batch_size
+        dev_generator.load(dev_set)
 
         y_true = dev_generator.y
-        y_pred = self.model.predict(dev_generator)
-        y_pred = np.where(np.argmax(y_pred, axis=-1) >= 0.5, 1, 0)
+        y_pred = self.model.predict(dev_generator, verbose=1).logits
+        y_pred = np.argmax(y_pred, axis=-1)
         logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
         logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
         logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
@@ -434,4 +462,5 @@ class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassificatio
         self.classifier = BCClassificationHead(config,
                                                head_hidden_size,
                                                head_dropout,
-                                               head_activation)
+                                               head_activation,
+                                               name='bc_classification_head')

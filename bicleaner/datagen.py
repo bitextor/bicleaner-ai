@@ -144,7 +144,10 @@ class ConcatSentenceGenerator(tf.keras.utils.Sequence):
         start = index*self.batch_size
         indexes = self.index[start:end]
 
-        return self.x[indexes], self.y[indexes]
+        if self.att_mask is None:
+            return self.x[indexes], self.y[indexes]
+        else:
+            return [self.x[indexes], self.att_mask[indexes]], self.y[indexes]
 
     def on_epoch_end(self):
         'Shuffle indexes after each epoch'
@@ -180,14 +183,18 @@ class ConcatSentenceGenerator(tf.keras.utils.Sequence):
                                     padding="post",
                                     truncating="post",
                                     maxlen=self.maxlen)
+            self.att_mask = None
         else:
             # Tokenize with Transformers tokenizer that concatenates internally
             dataset = self.tok(data[0], data[1],
-                               padding=True,
+                               padding='max_length',
                                truncation=True,
-                               max_length=self.maxlen)
-            self.x = np.array(dataset["input_ids"])
-            # self.att_mask = np.array(dataset["attention_mask"])
+                               max_length=self.maxlen,
+                               return_tensors='np',
+                               return_attention_mask=True,
+                               return_token_type_ids=False)
+            self.x = dataset["input_ids"]
+            self.att_mask = dataset["attention_mask"]
 
         self.num_samples = self.x.shape[0]
         if data[2] is None:
