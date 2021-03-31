@@ -86,11 +86,13 @@ class MatthewsCorrCoef(Metric):
             top_k=None,
             class_id=None,
             name=None,
-            dtype=None):
+            dtype=None,
+            argmax=False):
         super(MatthewsCorrCoef, self).__init__(name=name, dtype=dtype)
         self.init_thresholds = thresholds
         self.top_k = top_k
         self.class_id = class_id
+        self.argmax = argmax
 
         default_threshold = 0.5 if top_k is None else metrics_utils.NEG_INF
         self.thresholds = metrics_utils.parse_init_thresholds(
@@ -114,6 +116,9 @@ class MatthewsCorrCoef(Metric):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         '''Accumulates true positive and false positive statistics.'''
+        if self.argmax:
+            y_pred = K.argmax(y_pred)
+
         return metrics_utils.update_confusion_matrix_variables(
                 {
                     metrics_utils.ConfusionMatrix.TRUE_POSITIVES: self.true_positives,

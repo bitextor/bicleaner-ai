@@ -18,7 +18,7 @@ import decomposable_attention
 import logging
 
 try:
-    from .metrics import FScore
+    from .metrics import FScore, MatthewsCorrCoef
     from .datagen import (
             TupleSentenceGenerator,
             ConcatSentenceGenerator,
@@ -28,7 +28,7 @@ try:
             TokenAndPositionEmbedding,
             BCClassificationHead)
 except (SystemError, ImportError):
-    from metrics import FScore
+    from metrics import FScore, MatthewsCorrCoef
     from datagen import (
             TupleSentenceGenerator,
             ConcatSentenceGenerator,
@@ -80,7 +80,8 @@ class BaseModel(ABC):
             "patience": 20,
             "loss": "binary_crossentropy",
             "lr": 1e-4,
-            "clipnorm": 0.5,
+            "clipnorm": None,
+            "metrics": self.get_metrics,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
                          decay_steps=self.settings["steps_per_epoch"]*2,
@@ -90,6 +91,20 @@ class BaseModel(ABC):
         #         self.settings["steps_per_epoch"]*4,
         #         t_mul=2.0, m_mul=0.8)
         self.settings["scheduler"] = scheduler
+        self.settings["optimizer"] = Adam(learning_rate=scheduler,
+                                          clipnorm=self.settings["clipnorm"])
+
+    def get_metrics(cls):
+        '''
+        Class method to create metric objects.
+        Variables need to be instatiated inside the same
+        strategy scope that the model.
+        '''
+        return [
+            Precision(name='p'),
+            Recall(name='r'),
+            MatthewsCorrCoef(name='mcc')
+        ]
 
     def get_generator(self, batch_size, shuffle):
         ''' Returns a sentence generator instance according to the model input '''
@@ -129,7 +144,7 @@ class BaseModel(ABC):
         '''Loads the whole model'''
         self.load_spm()
         logging.info("Loading neural classifier")
-        deps = { 'FScore': FScore }
+        deps = {'FScore': FScore, 'MatthewsCorrCoef': MatthewsCorrCoef}
         self.model = load_model(self.dir+'/'+self.model_file, custom_objects=deps)
 
     def train_vocab(self, monolingual, threads):
@@ -190,7 +205,7 @@ class BaseModel(ABC):
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/' + self.model_file
-        earlystop = EarlyStopping(monitor='val_f1',
+        earlystop = EarlyStopping(monitor='val_mcc',
                                   mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
@@ -200,7 +215,10 @@ class BaseModel(ABC):
 
         logging.info("Training neural classifier")
 
-        self.model = self.build_model()
+        strategy = tf.distribute.MirroredStrategy()
+        num_devices = strategy.num_replicas_in_sync
+        with strategy.scope():
+            self.model = self.build_model()
         self.model.summary()
         self.model.fit(train_generator,
                        batch_size=self.settings["batch_size"],
@@ -268,6 +286,8 @@ class Transformer(BaseModel):
                          decay_steps=self.settings["steps_per_epoch"]//4,
                          decay_rate=0.2)
         self.settings["scheduler"] = scheduler
+        self.settings["optimizer"] = Adam(learning_rate=settings["scheduler"],
+                                          clipnorm=settings["clipnorm"])
 
     def get_generator(self, batch_size, shuffle):
         return ConcatSentenceGenerator(
@@ -300,11 +320,9 @@ class Transformer(BaseModel):
             outputs = layers.Dense(settings["n_classes"], activation='sigmoid')(x)
 
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
-        model.compile(
-                optimizer=Adam(learning_rate=settings["scheduler"],
-                               clipnorm=settings["clipnorm"]),
-                loss=settings["loss"],
-                metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')])
+        model.compile(optimizer=settings["optimizer"],
+                      loss=settings["loss"],
+                      metrics=settings["metrics"]())
         return model
 
 
@@ -323,7 +341,7 @@ class BCXLMRoberta(object):
             "n_classes": 2,
             "epochs": 10 if epochs is None else epochs,
             "steps_per_epoch": 40000 if steps_per_epoch is None else steps_per_epoch,
-            "patience": 5,
+            "patience": 3,
             "dropout": 0.1,
             "n_hidden": 2048,
             "activation": 'relu',
@@ -405,7 +423,7 @@ class BCXLMRoberta(object):
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/' + self.model_file
-        earlystop = EarlyStopping(monitor='val_f1',
+        earlystop = EarlyStopping(monitor='val_mcc',
                                   mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
@@ -419,7 +437,8 @@ class BCXLMRoberta(object):
             self.model.compile(optimizer=self.settings["optimizer"],
                                loss=SparseCategoricalCrossentropy(
                                         from_logits=True),
-                               metrics=[FScore(name='f1', argmax=True)])
+                               metrics=[MatthewsCorrCoef(name='mcc',
+                                                         argmax=True)])
         self.model.summary()
         self.model.fit(train_generator,
                        epochs=self.settings["epochs"],

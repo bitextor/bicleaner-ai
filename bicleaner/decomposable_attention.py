@@ -14,10 +14,10 @@ from tensorflow.keras import backend as K
 import numpy as np
 
 try:
-    from .metrics import FScore
+    from .metrics import MatthewsCorrCoef
     from .layers import TokenAndPositionEmbedding
 except (SystemError, ImportError):
-    from metrics import FScore
+    from metrics import MatthewsCorrCoef
     from layers import TokenAndPositionEmbedding
 
 def build_model(vectors, settings):
@@ -101,12 +101,10 @@ def build_model(vectors, settings):
 
     model = Model([input1, input2], out)
 
-    model.compile(
-        optimizer=Adam(learning_rate=settings["scheduler"], clipnorm=settings["clipnorm"]),
-        loss=settings["loss"],
-        metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')],
-        experimental_run_tf_function=False,
-    )
+    model.compile(optimizer=settings["optimizer"],
+                  loss=settings["loss"],
+                  metrics=settings["metrics"](), # Call get_metrics
+                  experimental_run_tf_function=False,)
 
     return model
 
