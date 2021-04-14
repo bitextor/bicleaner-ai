@@ -120,7 +120,11 @@ def create_embedding(vectors, max_length, projected_dim, trainable=False):
             #     trainable=trainable,
             #     mask_zero=True,
             # ),
-            TokenAndPositionEmbedding(vectors, max_length, trainable),
+            TokenAndPositionEmbedding(vectors.shape[0],
+                                      vectors.shape[1],
+                                      max_length,
+                                      vectors,
+                                      trainable),
             layers.TimeDistributed(
                 layers.Dense(projected_dim, activation=None, use_bias=False,
                     kernel_regularizer=None)

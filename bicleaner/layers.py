@@ -5,19 +5,26 @@ import tensorflow as tf
 
 class TokenAndPositionEmbedding(layers.Layer):
     '''Token and positional embeddings layer with pre-trained weights'''
-    def __init__(self, vectors, maxlen, trainable=False):
-        super(TokenAndPositionEmbedding, self).__init__()
-        self.maxlen = maxlen
+    def __init__(self, input_dim, output_dim, input_length,
+            vectors=None, trainable=False, **kwargs):
+        super(TokenAndPositionEmbedding, self).__init__(**kwargs)
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.input_length = input_length
+
+        if vectors is not None:
+            vectors = [vectors]
         self.token_emb = layers.Embedding(
-                            input_dim=vectors.shape[0],
-                            output_dim=vectors.shape[1],
-                            input_length=maxlen,
-                            weights=[vectors],
+                            input_dim=input_dim,
+                            output_dim=output_dim,
+                            input_length=input_length,
+                            weights=vectors,
                             trainable=trainable,
                             mask_zero=True)
         self.pos_emb = layers.Embedding(
-                            input_dim=maxlen,
-                            output_dim=vectors.shape[1])
+                            input_dim=input_length,
+                            output_dim=output_dim)
 
     def call(self, x):
         maxlen = tf.shape(x)[-1]
@@ -27,7 +34,11 @@ class TokenAndPositionEmbedding(layers.Layer):
         return x + positions
 
     def get_config(self):
-        config = { 'maxlen': self.maxlen }
+        config = {
+            "input_dim": self.input_dim,
+            "output_dim": self.output_dim,
+            "input_length": self.input_length,
+        }
         base_config = super(TokenAndPositionEmbedding, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
