@@ -103,7 +103,8 @@ class BaseModel(ABC):
         return [
             Precision(name='p'),
             Recall(name='r'),
-            MatthewsCorrCoef(name='mcc')
+            FScore(name='f1'),
+            MatthewsCorrCoef(name='mcc'),
         ]
 
     def get_generator(self, batch_size, shuffle):
@@ -144,7 +145,10 @@ class BaseModel(ABC):
         '''Loads the whole model'''
         self.load_spm()
         logging.info("Loading neural classifier")
-        deps = {'FScore': FScore, 'MatthewsCorrCoef': MatthewsCorrCoef}
+        deps = {'FScore': FScore,
+                'MatthewsCorrCoef': MatthewsCorrCoef,
+                'TokenAndPositionEmbedding': TokenAndPositionEmbedding,
+        }
         self.model = load_model(self.dir+'/'+self.model_file, custom_objects=deps)
 
     def train_vocab(self, monolingual, threads):
@@ -205,7 +209,7 @@ class BaseModel(ABC):
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/' + self.model_file
-        earlystop = EarlyStopping(monitor='val_mcc',
+        earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
@@ -423,7 +427,7 @@ class BCXLMRoberta(object):
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/' + self.model_file
-        earlystop = EarlyStopping(monitor='val_mcc',
+        earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
                                   restore_best_weights=True)
@@ -437,8 +441,8 @@ class BCXLMRoberta(object):
             self.model.compile(optimizer=self.settings["optimizer"],
                                loss=SparseCategoricalCrossentropy(
                                         from_logits=True),
-                               metrics=[MatthewsCorrCoef(name='mcc',
-                                                         argmax=True)])
+                               metrics=[FScore(name='f1',
+                                               argmax=True)])
         self.model.summary()
         self.model.fit(train_generator,
                        epochs=self.settings["epochs"],
