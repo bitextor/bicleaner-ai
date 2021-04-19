@@ -14,26 +14,19 @@ import shutil
 
 #Allows to load modules while inside or outside the package  
 try:
-    from .models import DecomposableAttention, Transformer, BCXLMRoberta
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
-    from .util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
+    from .util import *
     from .training import build_noise, write_metadata, train_porn_removal
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
-    from models import DecomposableAttention, Transformer, BCXLMRoberta
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
-    from util import no_escaping, check_dir, check_positive, check_positive_or_zero, logging_setup
+    from util import *
     from training import build_noise, write_metadata, train_porn_removal
     from tokenizer import Tokenizer
 
 logging_level = 0
-classifier_classes = {
-        "dec_attention": DecomposableAttention,
-        "transformer": Transformer,
-        "xlm-roberta": BCXLMRoberta,
-        }
 
 # Argument parsing
 def initialization():
@@ -62,7 +55,7 @@ def initialization():
     groupO.add_argument('--seed', default=None, type=int, help="Seed for random number generation. By default, no seeed is used.")
 
     # Classifier training options
-    groupO.add_argument('--classifier_type', choices=classifier_classes.keys(), default="dec_attention", help="Neural network architecture of the classifier")
+    groupO.add_argument('--classifier_type', choices=model_classes.keys(), default="dec_attention", help="Neural network architecture of the classifier")
     groupO.add_argument('--batch_size', type=int, default=None, help="Batch size during classifier training. If None, default architecture value will be used.")
     groupO.add_argument('--steps_per_epoch', type=int, default=None, help="Number of batch updatesper epoch during training. If None, default architecture value will be used.")
     groupO.add_argument('--epochs', type=int, default=None, help="Number of epochs for training. If None, default architecture value will be used.")
@@ -147,7 +140,7 @@ def perform_training(args):
 
     logging.info("Start training.")
 
-    classifier = classifier_classes[args.classifier_type](
+    classifier = get_model(args.classifier_type)(
                     args.model_dir,
                     batch_size=args.batch_size,
                     epochs=args.epochs,

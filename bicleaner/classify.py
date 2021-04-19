@@ -13,13 +13,11 @@ import gc
 
 #Allows to load modules while inside or outside the package
 try:
-    from .models import DecomposableAttention
     from .bicleaner_hardrules import wrong_tu
-    from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup
+    from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 except (ImportError, SystemError):
-    from models import DecomposableAttention
     from bicleaner_hardrules import wrong_tu
-    from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup
+    from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 
 __author__ = "Sergio Ortiz Rojas"
 __version__ = "Version 0.1 # 28/12/2017 # Initial release # Sergio Ortiz"
@@ -90,7 +88,7 @@ def load_metadata(args, parser):
             args.target_tokenizer_command=metadata_yaml["target_tokenizer_command"]
 
         # Load classifier
-        args.clf = DecomposableAttention(yamlpath)
+        args.clf = get_model(metadata_yaml["classifier_type"])(yamlpath)
         args.clf.load()
 
         if "disable_lang_ident" in metadata_yaml:

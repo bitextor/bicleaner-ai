@@ -455,6 +455,7 @@ def write_metadata(myargs, classifier, hgood, hwrong):
             out.write(file_attr + f": {getattr(classifier, file_attr)}\n")
     # Save classifier
     out.write(f"classifier_file: {classifier.model_file}\n")
+    out.write(f"classifier_type: {myargs.classifier_type}\n")
 
     # Save classifier train settings
     out.write("classifier_settings:\n")
