@@ -9,7 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 from tensorflow.keras import layers
 from glove import Corpus, Glove
-from abc import ABC
+from abc import ABC, abstractmethod
 import tensorflow.keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
@@ -38,7 +38,33 @@ except (SystemError, ImportError):
             TokenAndPositionEmbedding,
             BCClassificationHead)
 
-class BaseModel(ABC):
+class ModelInterface(ABC):
+    '''
+    Interface for model classes that gathers the essential
+    model methods: init, load, predict and train
+    '''
+    @abstractmethod
+    def __init__(self, directory, batch_size=None, epochs=None,
+                 steps_per_epoch=None):
+        pass
+
+    @abstractmethod
+    def get_generator(self, batch_size, shuffle):
+        pass
+
+    @abstractmethod
+    def predict(self, x1, x2, batch_size=None):
+        pass
+
+    @abstractmethod
+    def load(self):
+        pass
+
+    @abstractmethod
+    def train(self, train_set, dev_set):
+        pass
+
+class BaseModel(ModelInterface):
     '''Abstract Model class that gathers most of the training logic'''
 
     def __init__(self, directory, batch_size=None, epochs=None,
@@ -330,10 +356,11 @@ class Transformer(BaseModel):
         return model
 
 
-class BCXLMRoberta(object):
+class BCXLMRoberta(ModelInterface):
+    ''' Fine-tuned XLMRoberta model '''
+
     def __init__(self, directory, batch_size=None, epochs=None,
                  steps_per_epoch=None):
-        self.dir = directory
         self.dir = directory
         self.model = None
         self.model_file = 'model.tf'
@@ -352,7 +379,7 @@ class BCXLMRoberta(object):
             "loss": "binary_crossentropy",
             "lr": 2e-6,
             "decay_rate": 0.1,
-            "warmup_steps": 1000,
+            "warmup_steps": 5000,
             "clipnorm": 1.0,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
@@ -379,12 +406,33 @@ class BCXLMRoberta(object):
 
         tf_model = BCXLMRobertaForSequenceClassification.from_pretrained(
                         model_file,
-                        num_labels=2,
+                        num_labels=settings["n_classes"],
                         head_hidden_size=settings["n_hidden"],
                         head_dropout=settings["dropout"],
                         head_activation=settings["activation"])
 
         return tf_model
+
+    def load(self):
+        ''' Load fine-tuned model '''
+        self.model = self.load_model(self.dir + '/' + self.model_file)
+
+    def predict(self, x1, x2, batch_size=None):
+        '''Predicts from sequence generator'''
+        if batch_size is None:
+            batch_size = self.settings["batch_size"]
+        generator = self.get_generator(batch_size, shuffle=False)
+        generator.load((x1, x2, None))
+
+        if self.settings["n_classes"] == 1:
+            return self.model.predict(generator).logits
+        else:
+            # Compute softmax probability if output is 2-class
+            x = self.model.predict(generator).logits
+            e_x = np.exp(x - np.max(x))
+            # Need transpose to compute for each sample in the batch
+            # then slice to return first class probability
+            return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,:1]
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -410,20 +458,14 @@ class BCXLMRoberta(object):
     def train(self, train_set, dev_set):
         logging.info("Vectorizing training set")
 
-        train_generator = ConcatSentenceGenerator(
-                            self.tokenizer,
-                            batch_size=self.settings["batch_size"],
-                            maxlen=self.settings["maxlen"],
-                            shuffle=True)
+        train_generator = self.get_generator(self.settings["batch_size"],
+                                             shuffle=True)
         train_generator.load(train_set)
         steps_per_epoch = min(len(train_generator),
                               self.settings["steps_per_epoch"])
 
-        dev_generator = ConcatSentenceGenerator(
-                            self.tokenizer,
-                            batch_size=self.settings["batch_size"],
-                            maxlen=self.settings["maxlen"],
-                            shuffle=False)
+        dev_generator = self.get_generator(self.settings["batch_size"],
+                                             shuffle=False)
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/' + self.model_file
