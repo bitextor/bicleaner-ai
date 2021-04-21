@@ -431,8 +431,8 @@ class BCXLMRoberta(ModelInterface):
             x = self.model.predict(generator).logits
             e_x = np.exp(x - np.max(x))
             # Need transpose to compute for each sample in the batch
-            # then slice to return first class probability
-            return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,:1]
+            # then slice to return second (positive) class probability
+            return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,1:]
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
