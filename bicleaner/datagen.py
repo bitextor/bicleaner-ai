@@ -50,7 +50,6 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
         '''
         return int(np.ceil(self.x1.shape[0] / self.batch_size))
 
-    #TODO investigate how to return batches reading from stdin
     def __getitem__(self, index):
         '''
         Return a batch of sentences
@@ -63,7 +62,11 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
         start = index*self.batch_size
         indexes = self.index[start:end]
 
-        return [ self.x1[indexes], self.x2[indexes] ], self.y[indexes]
+        if self.weights is not None:
+            w = self.weights[indexes]
+            return [self.x1[indexes], self.x2[indexes]], self.y[indexes], w
+        else:
+            return [self.x1[indexes], self.x2[indexes]], self.y[indexes]
 
     def on_epoch_end(self):
         'Shuffle indexes after each epoch'
@@ -74,20 +77,25 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
         '''
         Load sentences and encode to index numbers
         If source is a string it is considered a file,
-        if it is a list is considered [text1_sentences, text2_sentences, tags]
+        if it is a list is considered:
+            [text1_sentences, text2_sentences, tags, weights]
+        Sample weights are optional
         '''
 
         if isinstance(source, str):
-            data = [[], [], []]
+            data = [[], [], [], []]
             with open(source, 'r') as file_:
                 for line in file_:
                     fields = line.split('\t')
                     data[0].append(fields[0].strip())
                     data[1].append(fields[1].strip())
                     data[2].append(fields[2].strip())
+                    if len(fields) >= 4:
+                        data[3].append(fields[3].strip())
         else:
             data = source
 
+        # Vectorize input sentences
         self.x1 = pad_sequences(self.encoder.encode(data[0]),
                                 padding='post',
                                 truncating='post',
@@ -97,13 +105,26 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
                                 truncating='post',
                                 maxlen=self.maxlen)
         self.num_samples = self.x1.shape[0]
-        if data[2] is None: #TODO set y to None instead of zeros for inference
+
+        # Build array of labels
+        if data[2] is None:
+            # Set to 0's for prediction
             self.y = np.zeros(self.num_samples)
         else:
             self.y = np.array(data[2], dtype=int)
+
+        # Build array of sample weights
+        if len(data) >= 4 and data[3]:
+            self.weights = np.array(data[3], dtype=float)
+        else:
+            self.weights = None
+
+        # Build batch index
         self.index = np.arange(0, self.num_samples)
+
         if self.shuffle:
-            np.random.shuffle(self.index) # Preventive shuffle in case data comes ordered
+            # Preventive shuffle in case data comes ordered
+            np.random.shuffle(self.index)
 
 
 class ConcatSentenceGenerator(tf.keras.utils.Sequence):
