@@ -105,13 +105,13 @@ class BaseModel(ModelInterface):
             "steps_per_epoch": 4096 if steps_per_epoch is None else steps_per_epoch,
             "patience": 20,
             "loss": "binary_crossentropy",
-            "lr": 1e-4,
+            "lr": 5e-4,
             "clipnorm": None,
             "metrics": self.get_metrics,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
-                         decay_steps=self.settings["steps_per_epoch"]*2,
-                         decay_rate=0.9)
+                         decay_steps=self.settings["steps_per_epoch"]//4,
+                         decay_rate=0.2)
         # scheduler = tf.keras.experimental.CosineDecayRestarts(
         #         self.settings["lr"],
         #         self.settings["steps_per_epoch"]*4,
