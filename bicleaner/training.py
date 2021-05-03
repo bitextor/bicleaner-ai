@@ -409,7 +409,7 @@ def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
 
 
 # Write YAML with the training parameters and quality estimates
-def write_metadata(myargs, classifier, hgood, hwrong):
+def write_metadata(myargs, classifier, hgood, hwrong, calibration_params):
     out = myargs.metadata
 
     precision, recall, accuracy = precision_recall(hgood, hwrong)
@@ -456,6 +456,7 @@ def write_metadata(myargs, classifier, hgood, hwrong):
     # Save classifier
     out.write(f"classifier_file: {classifier.model_file}\n")
     out.write(f"classifier_type: {myargs.classifier_type}\n")
+    out.write(f"calibration_params: {calibration_params}\n")
 
     # Save classifier train settings
     out.write("classifier_settings:\n")

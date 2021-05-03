@@ -56,7 +56,8 @@ def argument_parser():
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
     groupO.add_argument('-d', '--discarded_tus', type=argparse.FileType('w'), default=None, help="TSV file with discarded TUs. Discarded TUs by the classifier are written in this file in TSV file.")
     groupO.add_argument('--score_only',action='store_true', help="Only output one column which is the bicleaner score", default=False)
-     
+    groupO.add_argument('--calibrated',action='store_true', help="Output calibrated scores", default=False)
+
     groupO.add_argument('--disable_hardrules',action = 'store_true', help = "Disables the bicleaner_hardrules filtering (only bicleaner_classify is applied)")
     groupO.add_argument('--disable_porn_removal', default=False, action='store_true', help="Don't apply porn removal")
     groupO.add_argument('--disable_minimal_length', default=False, action='store_true', help="Don't apply minimal length rule")
@@ -88,7 +89,14 @@ def load_metadata(args, parser):
             args.target_tokenizer_command=metadata_yaml["target_tokenizer_command"]
 
         # Load classifier
-        args.clf = get_model(metadata_yaml["classifier_type"])(yamlpath)
+        if "calibration_params" in metadata_yaml:
+            cal_params = metadata_yaml["calibration_params"]
+            if args.calibrated:
+                logging.info(f"Enabling calibrated output with parameters: {cal_params}")
+        else:
+            cal_params = None
+        args.clf = get_model(metadata_yaml["classifier_type"])(yamlpath,
+                                                    calibration_params=cal_params)
         args.clf.load()
 
         if "disable_lang_ident" in metadata_yaml:
@@ -192,7 +200,9 @@ def classify(args, input, output, porn_tokenizer):
 def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     # Classify predictions
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
-        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl, args.batch_size)
+        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl,
+                                       args.batch_size,
+                                       args.calibrated)
     else:
         predictions = []
     p = iter(predictions)

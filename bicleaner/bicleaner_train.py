@@ -153,7 +153,7 @@ def perform_training(args):
         except:
             classifier.train_vocab(args.mono_train, args.processes)
 
-    y_true, y_pred = classifier.train(train_sentences, dev_sentences)
+    y_true, y_pred, A, B = classifier.train(train_sentences, dev_sentences)
 
     if args.save_train_data is not None and train_sentences != args.save_train_data:
         os.unlink(train_sentences)
@@ -175,7 +175,7 @@ def perform_training(args):
     hgood  = np.histogram(good,  bins = np.arange(0, 1.1, 0.1))[0].tolist()
     hwrong = np.histogram(wrong, bins = np.arange(0, 1.1, 0.1))[0].tolist()
 
-    write_metadata(args, classifier, hgood, hwrong)
+    write_metadata(args, classifier, hgood, hwrong, [A, B])
     args.metadata.close()
 
     # Stats

@@ -3,7 +3,7 @@ from transformers.optimization_tf import create_optimizer
 from tensorflow.keras.optimizers.schedules import InverseTimeDecay
 from tensorflow.keras.callbacks import EarlyStopping, Callback
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
-from tensorflow.keras.losses import SparseCategoricalCrossentropy
+from tensorflow.keras.losses import SparseCategoricalCrossentropy, BinaryCrossentropy
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
@@ -38,6 +38,42 @@ except (SystemError, ImportError):
             TokenAndPositionEmbedding,
             BCClassificationHead)
 
+def calibrate_output(y_true, y_pred):
+    ''' Platt calibration
+    Estimate A*f(x)+B sigmoid parameters
+    '''
+    logging.info("Calibrating classifier output")
+    init_mcc = matthews_corrcoef(y_true, np.where(y_pred>=0.5, 1, 0))
+    # Define target values
+    n_pos = np.sum(y_true == 1)
+    n_neg = np.sum(y_true == 0)
+    y_target = np.where(y_true == 1, (n_pos+1)/(n_pos+2), y_true)
+    y_target = np.where(y_target == 0, 1/(n_neg+2), y_target)
+
+    # Parametrized sigmoid is equivalent to
+    # dense with single neuron and bias A*x + B
+    with tf.device("/cpu:0"):
+        model = tf.keras.Sequential([
+            tf.keras.layers.Dense(1, activation='sigmoid'),
+        ])
+    loss = BinaryCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=50)
+    model.compile(optimizer=Adam(learning_rate=5e-3), loss=loss)
+    model.fit(y_pred, y_target, epochs=1000, verbose=2,
+              batch_size=4096,
+              callbacks=None)
+
+    # Check mcc hasn't been affected
+    y_pred = model.predict(y_pred)
+    end_mcc = matthews_corrcoef(y_true, np.where(y_pred>=0.5, 1, 0))
+    if (init_mcc - end_mcc) > 0.02:
+        logging.warning(f"Calibration has decreased MCC from {init_mcc:.4f} to {end_mcc:.4f}")
+
+    # Obtain scalar values from model weights
+    A = float(model.layers[0].weights[0].numpy()[0][0])
+    B = float(model.layers[0].weights[1].numpy()[0])
+    return A, B
+
 class ModelInterface(ABC):
     '''
     Interface for model classes that gathers the essential
@@ -45,7 +81,7 @@ class ModelInterface(ABC):
     '''
     @abstractmethod
     def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None):
+                 steps_per_epoch=None, calibration_params=None):
         pass
 
     @abstractmethod
@@ -53,7 +89,7 @@ class ModelInterface(ABC):
         pass
 
     @abstractmethod
-    def predict(self, x1, x2, batch_size=None):
+    def predict(self, x1, x2, batch_size=None, calibrated=False):
         pass
 
     @abstractmethod
@@ -64,11 +100,16 @@ class ModelInterface(ABC):
     def train(self, train_set, dev_set):
         pass
 
+    def calibrate(self, y_pred):
+        A = self.calibration_params[0]
+        B = self.calibration_params[1]
+        return 1/(1 + np.exp(-(A*y_pred+B)))
+
 class BaseModel(ModelInterface):
     '''Abstract Model class that gathers most of the training logic'''
 
     def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None):
+                 steps_per_epoch=None, calibration_params=None):
         self.dir = directory
         self.trained = False
         self.spm = None
@@ -80,6 +121,9 @@ class BaseModel(ModelInterface):
         self.spm_file = self.spm_prefix + '.model'
         self.vocab_file = self.spm_prefix + '.vocab'
         self.model_file = 'model.h5'
+        if isinstance(calibration_params, list) and len(calibration_params)!=2:
+            raise Exception("'calibration_params' must be a list of 2 integers")
+        self.calibration_params = calibration_params
 
         self.settings = {
             "separator": None,
@@ -141,13 +185,16 @@ class BaseModel(ModelInterface):
         '''Returns a compiled Keras model instance'''
         raise NotImplementedError("Subclass must implement its model architecture")
 
-    def predict(self, x1, x2, batch_size=None):
+    def predict(self, x1, x2, batch_size=None, calibrated=False):
         '''Predicts from sequence generator'''
         if batch_size is None:
             batch_size = self.settings["batch_size"]
         generator = self.get_generator(batch_size, shuffle=False)
         generator.load((x1, x2, None))
-        return self.model.predict(generator)
+        if calibrated and self.calibration_params is not None:
+            return self.calibrate(self.model.predict(generator))
+        else:
+            return self.model.predict(generator)
 
     def load_spm(self):
         '''Loads SentencePiece model and vocabulary from model directory'''
@@ -260,13 +307,16 @@ class BaseModel(ModelInterface):
         self.model.save(model_filename)
 
         y_true = dev_generator.y
-        y_pred = np.where(self.model.predict(dev_generator) >= 0.5, 1, 0)
+        y_pred_probs = self.model.predict(dev_generator)
+        y_pred = np.where(y_pred_probs >= 0.5, 1, 0)
         logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
         logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
         logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
         logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
 
-        return y_true, y_pred
+        A, B = calibrate_output(y_true, y_pred_probs)
+
+        return y_true, y_pred, A, B
 
 class DecomposableAttention(BaseModel):
     '''Decomposable Attention model (Parikh et. al. 2016)'''
@@ -360,10 +410,13 @@ class BCXLMRoberta(ModelInterface):
     ''' Fine-tuned XLMRoberta model '''
 
     def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None):
+                 steps_per_epoch=None, calibration_params=None):
         self.dir = directory
         self.model = None
         self.model_file = 'model.tf'
+        if isinstance(calibration_params, list) and len(calibration_params)!=2:
+            raise Exception("'calibration_params' must be a list of 2 integers")
+        self.calibration_params = calibration_params
 
         self.settings = {
             "model": 'jplu/tf-xlm-roberta-base',
@@ -379,7 +432,7 @@ class BCXLMRoberta(ModelInterface):
             "loss": "binary_crossentropy",
             "lr": 2e-6,
             "decay_rate": 0.1,
-            "warmup_steps": 5000,
+            "warmup_steps": 1000,
             "clipnorm": 1.0,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
@@ -417,22 +470,31 @@ class BCXLMRoberta(ModelInterface):
         ''' Load fine-tuned model '''
         self.model = self.load_model(self.dir + '/' + self.model_file)
 
-    def predict(self, x1, x2, batch_size=None):
+    def softmax_pos_prob(self, x):
+        # Compute softmax probability of the second (positive) class
+        e_x = np.exp(x - np.max(x))
+        # Need transpose to compute for each sample in the batch
+        # then slice to return class probability
+        return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,1:]
+
+    def predict(self, x1, x2, batch_size=None, calibrated=False):
         '''Predicts from sequence generator'''
         if batch_size is None:
             batch_size = self.settings["batch_size"]
         generator = self.get_generator(batch_size, shuffle=False)
         generator.load((x1, x2, None))
 
+        y_pred = self.model.predict(generator).logits
         if self.settings["n_classes"] == 1:
-            return self.model.predict(generator).logits
+            y_pred_probs = y_pred
         else:
             # Compute softmax probability if output is 2-class
-            x = self.model.predict(generator).logits
-            e_x = np.exp(x - np.max(x))
-            # Need transpose to compute for each sample in the batch
-            # then slice to return second (positive) class probability
-            return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,1:]
+            y_pred_probs = self.softmax_pos_prob(y_pred)
+
+        if calibrated and self.calibration_params is not None:
+            return self.calibrate(y_pred_probs)
+        else:
+            return y_pred_probs
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -511,13 +573,16 @@ class BCXLMRoberta(ModelInterface):
 
         y_true = dev_generator.y
         y_pred = self.model.predict(dev_generator, verbose=1).logits
+        y_pred_probs = self.softmax_pos_prob(y_pred)
         y_pred = np.argmax(y_pred, axis=-1)
         logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
         logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
         logging.info(f"Dev f1: {f1_score(y_true, y_pred):.3f}")
         logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
 
-        return y_true, y_pred
+        A, B = calibrate_output(y_true, y_pred_probs)
+
+        return y_true, y_pred, A, B
 
 class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassification):
     """Model for sentence-level classification tasks."""
