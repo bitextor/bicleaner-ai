@@ -137,7 +137,7 @@ class MatthewsCorrCoef(Metric):
         N = (self.true_negatives + self.true_positives
                 + self.false_negatives + self.false_positives)
         S = (self.true_positives + self.false_negatives) / N
-        P = (self.true_positives + self.false_negatives) / N
+        P = (self.true_positives + self.false_positives) / N
         result = tf.math.divide_no_nan(self.true_positives/N - S*P,
                                        tf.math.sqrt(P * S * (1-S) * (1-P)))
         return result[0] if len(self.thresholds) == 1 else result
