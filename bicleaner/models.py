@@ -222,7 +222,8 @@ class BaseModel(ModelInterface):
                 'MatthewsCorrCoef': MatthewsCorrCoef,
                 'TokenAndPositionEmbedding': TokenAndPositionEmbedding,
         }
-        self.model = load_model(self.dir+'/'+self.model_file, custom_objects=deps)
+        self.model = load_model(self.dir+'/'+self.model_file,
+                                custom_objects=deps, compile=False)
 
     def train_vocab(self, monolingual, threads):
         '''Trains SentencePiece model and embeddings with Glove'''
