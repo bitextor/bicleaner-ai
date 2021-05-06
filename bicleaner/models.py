@@ -267,24 +267,25 @@ class BaseModel(ModelInterface):
 
         if self.wv is None or self.spm is None:
             raise Exception("Vocabulary is not trained")
+        settings = self.settings
 
         logging.info("Vectorizing training set")
         train_generator = self.get_generator(
-                                self.settings["batch_size"],
+                                settings["batch_size"],
                                 shuffle=True)
         train_generator.load(train_set)
         steps_per_epoch = min(len(train_generator),
-                              self.settings["steps_per_epoch"])
+                              settings["steps_per_epoch"])
 
         dev_generator = self.get_generator(
-                                self.settings["batch_size"],
+                                settings["batch_size"],
                                 shuffle=False)
         dev_generator.load(dev_set)
 
         model_filename = self.dir + '/' + self.model_file
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
-                                  patience=self.settings["patience"],
+                                  patience=settings["patience"],
                                   restore_best_weights=True)
         class LRReport(Callback):
             def on_epoch_end(self, epoch, logs={}):
@@ -298,8 +299,8 @@ class BaseModel(ModelInterface):
             self.model = self.build_model()
         self.model.summary()
         self.model.fit(train_generator,
-                       batch_size=self.settings["batch_size"],
-                       epochs=self.settings["epochs"],
+                       batch_size=settings["batch_size"],
+                       epochs=settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
                        validation_data=dev_generator,
                        callbacks=[earlystop, LRReport()],
