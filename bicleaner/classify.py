@@ -57,6 +57,7 @@ def argument_parser():
     groupO.add_argument('-d', '--discarded_tus', type=argparse.FileType('w'), default=None, help="TSV file with discarded TUs. Discarded TUs by the classifier are written in this file in TSV file.")
     groupO.add_argument('--score_only',action='store_true', help="Only output one column which is the bicleaner score", default=False)
     groupO.add_argument('--calibrated',action='store_true', help="Output calibrated scores", default=False)
+    groupO.add_argument('--raw_output',action='store_true', help="Return raw output without computing positive class probability.", default=False)
 
     groupO.add_argument('--disable_hardrules',action = 'store_true', help = "Disables the bicleaner_hardrules filtering (only bicleaner_classify is applied)")
     groupO.add_argument('--disable_porn_removal', default=False, action='store_true', help="Don't apply porn removal")
@@ -170,7 +171,8 @@ def classify(args, input, output, porn_tokenizer):
         buf_sent.append(line)
 
         # Buffer sentences that are not empty and pass hardrules
-        if sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, None, args.porn_removal, porn_tokenizer)== False):
+        # buffer all sentences in raw mode
+        if args.raw_output or (sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, None, args.porn_removal, porn_tokenizer)== False)):
             buf_score.append(1)
             buf_sent_sl.append(sl_sentence)
             buf_sent_tl.append(tl_sentence)
@@ -202,7 +204,8 @@ def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
         predictions = args.clf.predict(buf_sent_sl, buf_sent_tl,
                                        args.batch_size,
-                                       args.calibrated)
+                                       args.calibrated,
+                                       args.raw_output)
     else:
         predictions = []
     p = iter(predictions)
@@ -210,12 +213,19 @@ def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     # Print sentences and scores to output
     for score, sent in zip(buf_score, buf_sent):
         if score == 1:
+            clf_score = next(p)
+            # Print 2 scores if raw output is enabled
+            if args.raw_output and len(clf_score) == 2:
+                outscore = f"{clf_score[0]:.3f}\t{clf_score[1]:.3f}"
+            else:
+                outscore = f"{clf_score[0]:.3f}"
+
             if args.score_only:
-                output.write("{0:.3f}".format((next(p)[0])))
+                output.write(outscore)
             else:
                 output.write(sent.strip())
                 output.write("\t")
-                output.write("{0:.3f}".format((next(p)[0])))
+                output.write(outscore)
             output.write("\n")
         else:
             if args.score_only:

@@ -90,8 +90,10 @@ class TupleSentenceGenerator(tf.keras.utils.Sequence):
                     data[0].append(fields[0].strip())
                     data[1].append(fields[1].strip())
                     data[2].append(fields[2].strip())
-                    if len(fields) >= 4:
+                    if len(fields) == 4:
                         data[3].append(fields[3].strip())
+                    elif len(fields) > 4:
+                        data[3].append([i.strip() for i in fields[3:]])
         else:
             data = source
 

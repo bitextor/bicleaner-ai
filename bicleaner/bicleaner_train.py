@@ -52,6 +52,7 @@ def initialization():
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
     groupO.add_argument('--save_train_data', type=str, default=None, help="Save the generated dataset into a file. If the file already exists the training dataset will be loaded from there.")
+    groupO.add_argument('--distilled', action='store_true', help='Enable Knowledge Distillation training. It needs pre-built training set with raw scores from a teacher model.')
     groupO.add_argument('--seed', default=None, type=int, help="Seed for random number generation. By default, no seeed is used.")
 
     # Classifier training options
@@ -144,7 +145,8 @@ def perform_training(args):
                     args.model_dir,
                     batch_size=args.batch_size,
                     epochs=args.epochs,
-                    steps_per_epoch=args.steps_per_epoch)
+                    steps_per_epoch=args.steps_per_epoch,
+                    distilled=args.distilled)
     if args.classifier_type in ['dec_attention', 'transformer']:
         # Load spm and embeddings if already trained
         try:

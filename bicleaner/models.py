@@ -1,4 +1,5 @@
 from transformers import TFXLMRobertaForSequenceClassification, XLMRobertaTokenizerFast
+from transformers.modeling_tf_outputs import TFSequenceClassifierOutput
 from transformers.optimization_tf import create_optimizer
 from tensorflow.keras.optimizers.schedules import InverseTimeDecay
 from tensorflow.keras.callbacks import EarlyStopping, Callback
@@ -109,7 +110,8 @@ class BaseModel(ModelInterface):
     '''Abstract Model class that gathers most of the training logic'''
 
     def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None, calibration_params=None):
+                 steps_per_epoch=None, calibration_params=None,
+                 distilled=False):
         self.dir = directory
         self.trained = False
         self.spm = None
@@ -143,12 +145,13 @@ class BaseModel(ModelInterface):
             "maxlen": 100,
             "n_hidden": 200,
             "dropout": 0.2,
-            "n_classes": 1,
+            "distilled": distilled,
+            "n_classes": 2 if distilled else 1,
             "entail_dir": "both",
             "epochs": 200 if epochs is None else epochs,
             "steps_per_epoch": 4096 if steps_per_epoch is None else steps_per_epoch,
             "patience": 20,
-            "loss": "binary_crossentropy",
+            "loss": "categorical_crossentropy" if distilled else "binary_crossentropy",
             "lr": 5e-4,
             "clipnorm": None,
             "metrics": self.get_metrics,
@@ -164,17 +167,18 @@ class BaseModel(ModelInterface):
         self.settings["optimizer"] = Adam(learning_rate=scheduler,
                                           clipnorm=self.settings["clipnorm"])
 
-    def get_metrics(cls):
+    def get_metrics(self):
         '''
         Class method to create metric objects.
         Variables need to be instatiated inside the same
         strategy scope that the model.
         '''
         return [
-            Precision(name='p'),
-            Recall(name='r'),
-            FScore(name='f1'),
-            MatthewsCorrCoef(name='mcc'),
+            #TODO create argmax precision and recall or use categorical acc
+            #Precision(name='p'),
+            #Recall(name='r'),
+            FScore(name='f1', argmax=self.settings["distilled"]),
+            MatthewsCorrCoef(name='mcc', argmax=self.settings["distilled"]),
         ]
 
     def get_generator(self, batch_size, shuffle):
@@ -195,6 +199,34 @@ class BaseModel(ModelInterface):
             return self.calibrate(self.model.predict(generator))
         else:
             return self.model.predict(generator)
+
+    def predict(self, x1, x2, batch_size=None, calibrated=False, raw=False):
+        '''Predicts from sequence generator'''
+        if batch_size is None:
+            batch_size = self.settings["batch_size"]
+        generator = self.get_generator(batch_size, shuffle=False)
+        generator.load((x1, x2, None))
+
+        y_pred = self.model.predict(generator)
+
+        # Obtain logits if model returns HF Transformers output
+        if isinstance(y_pred, TFSequenceClassifierOutput):
+            y_pred = y_pred.logits
+
+        if raw: # return raw output without computing probs
+            return y_pred
+
+        if self.settings["n_classes"] == 1:
+            y_pred_probs = y_pred
+        else:
+            # Compute softmax probability if output is 2-class
+            y_pred_probs = self.softmax_pos_prob(y_pred)
+
+        if calibrated and self.calibration_params is not None:
+            return self.calibrate(y_pred_probs)
+        else:
+            return y_pred_probs
+
 
     def load_spm(self):
         '''Loads SentencePiece model and vocabulary from model directory'''
@@ -479,7 +511,7 @@ class BCXLMRoberta(ModelInterface):
         # then slice to return class probability
         return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,1:]
 
-    def predict(self, x1, x2, batch_size=None, calibrated=False):
+    def predict(self, x1, x2, batch_size=None, calibrated=False, raw=False):
         '''Predicts from sequence generator'''
         if batch_size is None:
             batch_size = self.settings["batch_size"]
@@ -487,6 +519,9 @@ class BCXLMRoberta(ModelInterface):
         generator.load((x1, x2, None))
 
         y_pred = self.model.predict(generator).logits
+        if raw:
+            return y_pred
+
         if self.settings["n_classes"] == 1:
             y_pred_probs = y_pred
         else:

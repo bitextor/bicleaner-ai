@@ -14,9 +14,11 @@ from tensorflow.keras import backend as K
 import numpy as np
 
 try:
+    from .losses import KDLoss
     from .metrics import MatthewsCorrCoef
     from .layers import TokenAndPositionEmbedding
 except (SystemError, ImportError):
+    from losses import KDLoss
     from metrics import MatthewsCorrCoef
     from layers import TokenAndPositionEmbedding
 
@@ -92,17 +94,18 @@ def build_model(vectors, settings):
 
     H = create_feedforward(nr_hidden, dropout=settings["dropout"])
     out = H(concat)
-    if settings['loss'] == 'categorical_crossentropy':
+    if settings['distilled']:
         out = layers.Dense(nr_class)(out)
-        out = layers.Activation('softmax', dtype='float32')(out)
+        loss = KDLoss(settings["batch_size"])
     else:
         out = layers.Dense(nr_class)(out)
         out = layers.Activation('sigmoid', dtype='float32')(out)
+        loss = settings["loss"]
 
     model = Model([input1, input2], out)
 
     model.compile(optimizer=settings["optimizer"],
-                  loss=settings["loss"],
+                  loss=loss,
                   metrics=settings["metrics"](), # Call get_metrics
                   experimental_run_tf_function=False,)
 
