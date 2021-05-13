@@ -189,17 +189,6 @@ class BaseModel(ModelInterface):
         '''Returns a compiled Keras model instance'''
         raise NotImplementedError("Subclass must implement its model architecture")
 
-    def predict(self, x1, x2, batch_size=None, calibrated=False):
-        '''Predicts from sequence generator'''
-        if batch_size is None:
-            batch_size = self.settings["batch_size"]
-        generator = self.get_generator(batch_size, shuffle=False)
-        generator.load((x1, x2, None))
-        if calibrated and self.calibration_params is not None:
-            return self.calibrate(self.model.predict(generator))
-        else:
-            return self.model.predict(generator)
-
     def predict(self, x1, x2, batch_size=None, calibrated=False, raw=False):
         '''Predicts from sequence generator'''
         if batch_size is None:
