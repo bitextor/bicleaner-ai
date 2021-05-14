@@ -409,7 +409,7 @@ def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
 
 
 # Write YAML with the training parameters and quality estimates
-def write_metadata(myargs, classifier, hgood, hwrong, calibration_params):
+def write_metadata(myargs, classifier, hgood, hwrong):
     out = myargs.metadata
 
     precision, recall, accuracy = precision_recall(hgood, hwrong)
@@ -449,14 +449,8 @@ def write_metadata(myargs, classifier, hgood, hwrong, calibration_params):
     if myargs.target_tokenizer_command is not None:
         out.write("target_tokenizer_command: {}\n".format(myargs.target_tokenizer_command))
 
-    # Save vocabulary files if the classifier has them
-    for file_attr in ['spm_file', 'wv_file', 'vocab_file']:
-        if hasattr(classifier, file_attr):
-            out.write(file_attr + f": {getattr(classifier, file_attr)}\n")
     # Save classifier
-    out.write(f"classifier_file: {classifier.model_file}\n")
     out.write(f"classifier_type: {myargs.classifier_type}\n")
-    out.write(f"calibration_params: {calibration_params}\n")
 
     # Save classifier train settings
     out.write("classifier_settings:\n")

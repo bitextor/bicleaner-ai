@@ -81,8 +81,7 @@ class ModelInterface(ABC):
     model methods: init, load, predict and train
     '''
     @abstractmethod
-    def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None, calibration_params=None):
+    def __init__(self, directory, settings):
         pass
 
     @abstractmethod
@@ -102,32 +101,28 @@ class ModelInterface(ABC):
         pass
 
     def calibrate(self, y_pred):
-        A = self.calibration_params[0]
-        B = self.calibration_params[1]
+        A = self.settings["calibration_params"][0]
+        B = self.settings["calibration_params"][1]
         return 1/(1 + np.exp(-(A*y_pred+B)))
 
 class BaseModel(ModelInterface):
     '''Abstract Model class that gathers most of the training logic'''
 
-    def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None, calibration_params=None,
-                 distilled=False):
+    def __init__(self, directory, settings, distilled=False):
         self.dir = directory
         self.trained = False
         self.spm = None
         self.vocab = None
         self.model = None
         self.wv = None
-        self.wv_file = 'glove.vectors'
         self.spm_prefix = 'spm'
-        self.spm_file = self.spm_prefix + '.model'
-        self.vocab_file = self.spm_prefix + '.vocab'
-        self.model_file = 'model.h5'
-        if isinstance(calibration_params, list) and len(calibration_params)!=2:
-            raise Exception("'calibration_params' must be a list of 2 integers")
-        self.calibration_params = calibration_params
 
+        # Override with user defined settings in derived classes, not here
         self.settings = {
+            "spm_file": self.spm_prefix + ".model",
+            "vocab_file": self.spm_prefix + ".vocab",
+            "model_file": "model.h5",
+            "wv_file": "glove.vectors",
             "separator": None,
             "bos_id": -1,
             "eos_id": -1,
@@ -141,15 +136,15 @@ class BaseModel(ModelInterface):
             "emb_epochs": 10,
             "window": 15,
             "vocab_size": 32000,
-            "batch_size": 1024 if batch_size is None else batch_size,
+            "batch_size": 1024,
             "maxlen": 100,
             "n_hidden": 200,
             "dropout": 0.2,
             "distilled": distilled,
             "n_classes": 2 if distilled else 1,
             "entail_dir": "both",
-            "epochs": 200 if epochs is None else epochs,
-            "steps_per_epoch": 4096 if steps_per_epoch is None else steps_per_epoch,
+            "epochs": 200,
+            "steps_per_epoch": 4096,
             "patience": 20,
             "loss": "categorical_crossentropy" if distilled else "binary_crossentropy",
             "lr": 5e-4,
@@ -159,10 +154,6 @@ class BaseModel(ModelInterface):
         scheduler = InverseTimeDecay(self.settings["lr"],
                          decay_steps=self.settings["steps_per_epoch"]//4,
                          decay_rate=0.2)
-        # scheduler = tf.keras.experimental.CosineDecayRestarts(
-        #         self.settings["lr"],
-        #         self.settings["steps_per_epoch"]*4,
-        #         t_mul=2.0, m_mul=0.8)
         self.settings["scheduler"] = scheduler
         self.settings["optimizer"] = Adam(learning_rate=scheduler,
                                           clipnorm=self.settings["clipnorm"])
@@ -197,12 +188,11 @@ class BaseModel(ModelInterface):
         generator.load((x1, x2, None))
 
         y_pred = self.model.predict(generator)
-
-        # Obtain logits if model returns HF Transformers output
+        # Obtain logits if model returns HF output
         if isinstance(y_pred, TFSequenceClassifierOutput):
             y_pred = y_pred.logits
 
-        if raw: # return raw output without computing probs
+        if raw:
             return y_pred
 
         if self.settings["n_classes"] == 1:
@@ -211,7 +201,7 @@ class BaseModel(ModelInterface):
             # Compute softmax probability if output is 2-class
             y_pred_probs = self.softmax_pos_prob(y_pred)
 
-        if calibrated and self.calibration_params is not None:
+        if calibrated and "calibration_params" in self.settings:
             return self.calibrate(y_pred_probs)
         else:
             return y_pred_probs
@@ -219,12 +209,12 @@ class BaseModel(ModelInterface):
 
     def load_spm(self):
         '''Loads SentencePiece model and vocabulary from model directory'''
-        self.spm = SentenceEncoder(self.dir+'/'+self.spm_file,
+        self.spm = SentenceEncoder(self.dir+'/'+self.settings["spm_file"],
                                    add_bos=self.settings["add_bos"],
                                    add_eos=self.settings["add_eos"],
                                    enable_sampling=self.settings["enable_sampling"])
         self.vocab = {}
-        with open(self.dir + '/' + self.vocab_file) as vocab_file:
+        with open(self.dir + '/' + self.settings["vocab_file"]) as vocab_file:
             for i, line in enumerate(vocab_file):
                 token = line.split('\t')[0]
                 self.vocab[token] = i
@@ -233,7 +223,8 @@ class BaseModel(ModelInterface):
     def load_embed(self):
         '''Loads embeddings from model directory'''
         logging.info("Loading SentenePiece Glove vectors")
-        self.wv = Glove().load(self.dir + '/' + self.wv_file).word_vectors
+        glove = Glove().load(self.dir+'/'+self.settings["wv_file"])
+        self.wv = glove.word_vectors
 
     def load(self):
         '''Loads the whole model'''
@@ -243,7 +234,7 @@ class BaseModel(ModelInterface):
                 'MatthewsCorrCoef': MatthewsCorrCoef,
                 'TokenAndPositionEmbedding': TokenAndPositionEmbedding,
         }
-        self.model = load_model(self.dir+'/'+self.model_file,
+        self.model = load_model(self.dir+'/'+self.settings["model_file"],
                                 custom_objects=deps, compile=False)
 
     def train_vocab(self, monolingual, threads):
@@ -282,7 +273,7 @@ class BaseModel(ModelInterface):
                        epochs=self.settings["emb_epochs"],
                        no_threads=threads)
         self.wv = embeddings.word_vectors
-        embeddings.save(self.dir + '/' + self.wv_file)
+        embeddings.save(self.dir + '/' + self.settings["wv_file"])
 
     def train(self, train_set, dev_set):
         '''Trains the neural classifier'''
@@ -304,7 +295,7 @@ class BaseModel(ModelInterface):
                                 shuffle=False)
         dev_generator.load(dev_set)
 
-        model_filename = self.dir + '/' + self.model_file
+        model_filename = self.dir + '/' + settings["model_file"]
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=settings["patience"],
@@ -338,18 +329,20 @@ class BaseModel(ModelInterface):
         logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
 
         A, B = calibrate_output(y_true, y_pred_probs)
+        self.settings["calibration_params"] = (A, B)
 
-        return y_true, y_pred, A, B
+        return y_true, y_pred
 
 class DecomposableAttention(BaseModel):
     '''Decomposable Attention model (Parikh et. al. 2016)'''
 
-    def __init__(self, directory, **kwargs):
-        super(DecomposableAttention, self).__init__(directory, **kwargs)
+    def __init__(self, directory, settings, **kwargs):
+        super(DecomposableAttention, self).__init__(directory, settings, **kwargs)
 
         self.settings = {
-            **self.settings,
+            **self.settings, # Obtain settings from parent
             "self_attention": False,
+            **settings, # Override default settings with user-defined
         }
 
     def get_generator(self, batch_size, shuffle):
@@ -364,12 +357,11 @@ class DecomposableAttention(BaseModel):
 class Transformer(BaseModel):
     '''Basic Transformer model'''
 
-    def __init__(self, directory, **kwargs):
-        super(Transformer, self).__init__(directory, **kwargs)
+    def __init__(self, directory, settings, **kwargs):
+        super(Transformer, self).__init__(directory, settings, **kwargs)
 
-        self.separator = '[SEP]'
         self.settings = {
-            **self.settings,
+            **self.settings, # Obtain settings from parent
             "separator": '[SEP]',
             "pad_id": 0,
             "bos_id": 1,
@@ -384,6 +376,7 @@ class Transformer(BaseModel):
             "att_dropout": 0.5,
             "lr": 5e-4,
             "clipnorm": 1.0,
+            **settings, # Override default settings with user-defined
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
                          decay_steps=self.settings["steps_per_epoch"]//4,
@@ -397,7 +390,7 @@ class Transformer(BaseModel):
                     self.spm, shuffle=shuffle,
                     batch_size=batch_size,
                     maxlen=self.settings["maxlen"],
-                    separator=self.separator)
+                    separator=self.settings["separator"])
 
     def build_model(self):
         settings = self.settings
@@ -429,25 +422,23 @@ class Transformer(BaseModel):
         return model
 
 
-class BCXLMRoberta(ModelInterface):
+class BCXLMRoberta(BaseModel):
     ''' Fine-tuned XLMRoberta model '''
 
-    def __init__(self, directory, batch_size=None, epochs=None,
-                 steps_per_epoch=None, calibration_params=None):
+    def __init__(self, directory, settings, **kwargs):
         self.dir = directory
         self.model = None
-        self.model_file = 'model.tf'
-        if isinstance(calibration_params, list) and len(calibration_params)!=2:
-            raise Exception("'calibration_params' must be a list of 2 integers")
-        self.calibration_params = calibration_params
+        self.tokenizer = None
 
         self.settings = {
+            "model_file": "model.tf",
+            "vocab_file": "vocab",
             "model": 'jplu/tf-xlm-roberta-base',
-            "batch_size": 16 if batch_size is None else batch_size,
+            "batch_size": 16,
             "maxlen": 150,
             "n_classes": 2,
-            "epochs": 10 if epochs is None else epochs,
-            "steps_per_epoch": 40000 if steps_per_epoch is None else steps_per_epoch,
+            "epochs": 10,
+            "steps_per_epoch": 40000,
             "patience": 3,
             "dropout": 0.1,
             "n_hidden": 2048,
@@ -457,6 +448,7 @@ class BCXLMRoberta(ModelInterface):
             "decay_rate": 0.1,
             "warmup_steps": 1000,
             "clipnorm": 1.0,
+            **settings,
         }
         scheduler = InverseTimeDecay(self.settings["lr"],
                                      decay_steps=32.0,
@@ -469,7 +461,7 @@ class BCXLMRoberta(ModelInterface):
                 weight_decay_rate=self.settings["decay_rate"])
         self.settings["scheduler"] = scheduler
         self.settings["optimizer"] = optimizer
-        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(self.settings["model"])
+        #TODO load previously saved
 
     def get_generator(self, batch_size, shuffle):
         return ConcatSentenceGenerator(
@@ -491,7 +483,9 @@ class BCXLMRoberta(ModelInterface):
 
     def load(self):
         ''' Load fine-tuned model '''
-        self.model = self.load_model(self.dir + '/' + self.model_file)
+        vocab_file = self.dir + '/' + self.settings["vocab_file"]
+        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(vocab_file)
+        self.model = self.load_model(self.dir+'/'+self.settings["model_file"])
 
     def softmax_pos_prob(self, x):
         # Compute softmax probability of the second (positive) class
@@ -499,28 +493,6 @@ class BCXLMRoberta(ModelInterface):
         # Need transpose to compute for each sample in the batch
         # then slice to return class probability
         return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,1:]
-
-    def predict(self, x1, x2, batch_size=None, calibrated=False, raw=False):
-        '''Predicts from sequence generator'''
-        if batch_size is None:
-            batch_size = self.settings["batch_size"]
-        generator = self.get_generator(batch_size, shuffle=False)
-        generator.load((x1, x2, None))
-
-        y_pred = self.model.predict(generator).logits
-        if raw:
-            return y_pred
-
-        if self.settings["n_classes"] == 1:
-            y_pred_probs = y_pred
-        else:
-            # Compute softmax probability if output is 2-class
-            y_pred_probs = self.softmax_pos_prob(y_pred)
-
-        if calibrated and self.calibration_params is not None:
-            return self.calibrate(y_pred_probs)
-        else:
-            return y_pred_probs
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -543,9 +515,14 @@ class BCXLMRoberta(ModelInterface):
         ds = ds.shuffle(len(sentences))
         return ds.batch(self.settings["batch_size"]).prefetch(5)
 
+    def train_vocab(self, **kwargs):
+        pass
+
     def train(self, train_set, dev_set):
         logging.info("Vectorizing training set")
 
+        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(
+                                                    self.settings["model"])
         train_generator = self.get_generator(self.settings["batch_size"],
                                              shuffle=True)
         train_generator.load(train_set)
@@ -556,7 +533,8 @@ class BCXLMRoberta(ModelInterface):
                                              shuffle=False)
         dev_generator.load(dev_set)
 
-        model_filename = self.dir + '/' + self.model_file
+        model_filename = self.dir + '/' + self.settings["model_file"]
+        vocab_filename = self.dir + '/' + self.settings["vocab_file"]
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
@@ -582,6 +560,7 @@ class BCXLMRoberta(ModelInterface):
                        callbacks=[earlystop],
                        verbose=1)
         self.model.save_pretrained(model_filename)
+        self.tokenizer.save_pretrained(vocab_filename)
 
         # predict returns empty output when using multi-gpu
         # so, reloading model in single gpu is needed for prediction
@@ -607,8 +586,9 @@ class BCXLMRoberta(ModelInterface):
         logging.info(f"Dev mcc: {matthews_corrcoef(y_true, y_pred):.3f}")
 
         A, B = calibrate_output(y_true, y_pred_probs)
+        self.settings["calibration_params"] = (A, B)
 
-        return y_true, y_pred, A, B
+        return y_true, y_pred
 
 class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassification):
     """Model for sentence-level classification tasks."""

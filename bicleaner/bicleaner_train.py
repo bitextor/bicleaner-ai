@@ -141,11 +141,16 @@ def perform_training(args):
 
     logging.info("Start training.")
 
+    model_settings = {
+        "batch_size": args.batch_size,
+        "epochs": args.epochs,
+        "steps_per_epoch": args.steps_per_epoch
+    }
+    # Avoid overriding settings with None
+    model_settings = {k:v for k,v in model_settings.items() if v is not None }
     classifier = get_model(args.classifier_type)(
                     args.model_dir,
-                    batch_size=args.batch_size,
-                    epochs=args.epochs,
-                    steps_per_epoch=args.steps_per_epoch,
+                    model_settings,
                     distilled=args.distilled)
     if args.classifier_type in ['dec_attention', 'transformer']:
         # Load spm and embeddings if already trained
@@ -155,7 +160,7 @@ def perform_training(args):
         except:
             classifier.train_vocab(args.mono_train, args.processes)
 
-    y_true, y_pred, A, B = classifier.train(train_sentences, dev_sentences)
+    y_true, y_pred = classifier.train(train_sentences, dev_sentences)
 
     if args.save_train_data is not None and train_sentences != args.save_train_data:
         os.unlink(train_sentences)
@@ -177,7 +182,7 @@ def perform_training(args):
     hgood  = np.histogram(good,  bins = np.arange(0, 1.1, 0.1))[0].tolist()
     hwrong = np.histogram(wrong, bins = np.arange(0, 1.1, 0.1))[0].tolist()
 
-    write_metadata(args, classifier, hgood, hwrong, [A, B])
+    write_metadata(args, classifier, hgood, hwrong)
     args.metadata.close()
 
     # Stats

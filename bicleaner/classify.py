@@ -97,7 +97,7 @@ def load_metadata(args, parser):
         else:
             cal_params = None
         args.clf = get_model(metadata_yaml["classifier_type"])(yamlpath,
-                                                    calibration_params=cal_params)
+                                                metadata_yaml["classifier_settings"])
         args.clf.load()
 
         if "disable_lang_ident" in metadata_yaml:
