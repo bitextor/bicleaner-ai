@@ -130,7 +130,7 @@ class BaseModel(ModelInterface):
             "unk_id": 1,
             "add_bos": False,
             "add_eos": False,
-            "enable_sampling": False,
+            "sampling": False,
             "emb_dim": 300,
             "emb_trainable": True,
             "emb_epochs": 10,
@@ -212,7 +212,7 @@ class BaseModel(ModelInterface):
         self.spm = SentenceEncoder(self.dir+'/'+self.settings["spm_file"],
                                    add_bos=self.settings["add_bos"],
                                    add_eos=self.settings["add_eos"],
-                                   enable_sampling=self.settings["enable_sampling"])
+                                   enable_sampling=self.settings["sampling"])
         self.vocab = {}
         with open(self.dir + '/' + self.settings["vocab_file"]) as vocab_file:
             for i, line in enumerate(vocab_file):
@@ -461,7 +461,6 @@ class BCXLMRoberta(BaseModel):
                 weight_decay_rate=self.settings["decay_rate"])
         self.settings["scheduler"] = scheduler
         self.settings["optimizer"] = optimizer
-        #TODO load previously saved
 
     def get_generator(self, batch_size, shuffle):
         return ConcatSentenceGenerator(

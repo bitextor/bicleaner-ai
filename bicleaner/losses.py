@@ -2,7 +2,7 @@ import tensorflow as tf
 
 class KDLoss(tf.keras.losses.SparseCategoricalCrossentropy):
     ''' Knowledge Distillation loss
-    Computes KD loss from student loss and KLD loss between
+    Computes KD loss from student CE loss and KLD loss between
     student and teacher predictions.
     Assumes teacher predictions are coming as sample weights.
     '''
@@ -43,6 +43,7 @@ class KDLoss(tf.keras.losses.SparseCategoricalCrossentropy):
         return self.alpha * student_loss + (1 - self.alpha) * distillation_loss
 
     def get_config(self):
+        # Add temperature and alpha to the class config for seliarization
         config = {
             "temperature": self.temperature,
             "apha": self.alpha,
