@@ -424,16 +424,12 @@ def write_metadata(myargs, classifier, hgood, hwrong):
     logging.debug(recall_hist)
     logging.debug(accuracy_hist)
 
-    source_word_freqs = os.path.basename(myargs.source_word_freqs.name)
-    target_word_freqs = os.path.basename(myargs.target_word_freqs.name)
     if myargs.porn_removal_file is not None:
         porn_removal_file = os.path.basename(myargs.porn_removal_file)
 
     # Writing it by hand (not using YAML libraries) to preserve the order
     out.write("source_lang: {}\n".format(myargs.source_lang))
     out.write("target_lang: {}\n".format(myargs.target_lang))
-    out.write("source_word_freqs: {}\n".format(source_word_freqs))
-    out.write("target_word_freqs: {}\n".format(target_word_freqs))
     out.write(good_test_hist)
     out.write(wrong_test_hist)
     out.write(precision_hist)

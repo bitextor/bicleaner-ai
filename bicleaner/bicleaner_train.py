@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from sklearn.metrics import f1_score, precision_score
 from tempfile import TemporaryFile, NamedTemporaryFile
 from multiprocessing import cpu_count
 from timeit import default_timer
@@ -38,8 +37,6 @@ def initialization():
     groupM.add_argument('-m', '--model_dir', type=check_dir, required=True, help="Model directory, metadata, classifier and SentencePiece models will be saved in the same directory")
     groupM.add_argument('-s', '--source_lang', required=True, help="Source language")
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
-    groupM.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=True, help="L language gzipped list of word frequencies")
-    groupM.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=True, help="R language gzipped list of word frequencies")
     groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=True, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings")
     groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to train the classifier")
     groupM.add_argument('--parallel_test', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to test the classifier")
@@ -47,6 +44,8 @@ def initialization():
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
+    #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
+    groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
     groupO.add_argument('--block_size', type=check_positive, default=10000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
@@ -65,7 +64,7 @@ def initialization():
     groupO.add_argument('--pos_ratio', default=1, type=int, help="Ratio of positive samples used to oversample on validation and test sets")
     groupO.add_argument('--rand_ratio', default=3, type=int, help="Ratio of negative samples misaligned randomly")
     groupO.add_argument('--womit_ratio', default=3, type=int, help="Ratio of negative samples misaligned by randomly omitting words")
-    groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence")
+    groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence (needs --target_word_freq)")
     groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
     groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
 
@@ -99,6 +98,9 @@ def initialization():
         from tensorflow.keras import mixed_precision
         mixed_precision.set_global_policy('mixed_float16')
 
+    if args.freq_ratio > 0 and args.target_word_freqs is None:
+        raise Exception("Frequence based noise needs target language word frequencies")
+
     args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
 
     # Logging
@@ -113,8 +115,8 @@ def perform_training(args):
     logging.debug("Starting process")
 
     # Load word frequencies
-    if args.source_word_freqs:
-        args.sl_word_freqs = WordZipfFreqDist(args.source_word_freqs)
+    #if args.source_word_freqs:
+    #    args.sl_word_freqs = WordZipfFreqDist(args.source_word_freqs)
     if args.target_word_freqs:
         args.tl_word_freqs = WordZipfFreqDistDoubleLinked(args.target_word_freqs)
     else:
