@@ -105,12 +105,6 @@ def load_metadata(args, parser):
         else:
             args.disable_lang_ident = False
 
-        # Read accuracy histogram
-        threshold = np.argmax(metadata_yaml["accuracy_histogram"])*0.1
-        logging.info("Accuracy histogram: {}".format(metadata_yaml["accuracy_histogram"]))
-        logging.info("Ideal threshold: {:1.1f}".format(threshold))
-        metadata_yaml["threshold"] = threshold
-
         # Try loading porn_removal model
         if not args.disable_porn_removal:
             if not ("porn_removal_file" in metadata_yaml and "porn_removal_side" in metadata_yaml):

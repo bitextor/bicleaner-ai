@@ -107,6 +107,12 @@ def logging_setup(args = None):
     if logging_level <= logging.WARNING and logging_level != logging.DEBUG:
         logging.getLogger("ToolWrapper").setLevel(logging.WARNING)
 
+    if logging.getLogger().level == logging.INFO:
+        from transformers import logging as hf_logging
+        hf_logging.set_verbosity_error()
+        import tensorflow as tf
+        tf.get_logger().setLevel('ERROR')
+
 def shuffle_file(input: typing.TextIO, output: typing.TextIO):
     offsets=[]
     with TemporaryFile("w+") as temp:

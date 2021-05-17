@@ -1,5 +1,6 @@
 from multiprocessing import Queue, Process, Value, cpu_count
 from heapq import heappush, heappop
+from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from tempfile import TemporaryFile, NamedTemporaryFile
 from fuzzywuzzy import process, fuzz
 import logging
@@ -368,35 +369,6 @@ def remove_words_randomly_from_sentence(sentence):
         del sentence[wordpos]
     return sentence
 
-# Calculate precision, recall and accuracy over the 0.0,1.0,0.1 histogram of
-# good and  wrong alignments
-def precision_recall(hgood, hwrong):
-    precision = []
-    recall    = []
-    accuracy  = []
-    total = sum(hgood) + sum(hwrong)
-
-    for i in range(len(hgood)):
-        tp = sum(hgood[i:])   # true positives
-        fp = sum(hwrong[i:])  # false positives
-        fn = sum(hgood[:i])   # false negatives
-        tn = sum(hwrong[:i])  # true negatives
-        try:
-            precision.append(tp*1.0/(tp+fp))     # precision = tp/(tp+fp)
-        except ZeroDivisionError:
-            precision.append(math.nan)
-        try:
-            recall.append(tp*1.0/(tp+fn))        # recall = tp/(tp+fn)
-        except ZeroDivisionError:
-            recall.append(math.nan)
-        try:
-            accuracy.append((tp+tn)*1.0/total)   # accuracy = (tp+tn) / total
-        except ZeroDivisionError:
-            accuracy.append(math.nan)
-
-    return precision, recall, accuracy
-
-
 def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
     result_str = ["["]
     for i in range(len(numeric_list)):
@@ -409,20 +381,17 @@ def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
 
 
 # Write YAML with the training parameters and quality estimates
-def write_metadata(myargs, classifier, hgood, hwrong):
+def write_metadata(myargs, classifier, y_true, y_pred):
     out = myargs.metadata
 
-    precision, recall, accuracy = precision_recall(hgood, hwrong)
-    good_test_hist = "good_test_histogram: {}\n".format(hgood.__repr__())
-    wrong_test_hist = "wrong_test_histogram: {}\n".format(hwrong.__repr__())
-    precision_hist = "precision_histogram: {}\n".format(repr_right(precision))
-    recall_hist = "recall_histogram: {}\n".format(repr_right(recall))
-    accuracy_hist = "accuracy_histogram: {}\n".format(repr_right(accuracy))
-    logging.debug(good_test_hist)
-    logging.debug(wrong_test_hist)
-    logging.debug(precision_hist)
-    logging.debug(recall_hist)
-    logging.debug(accuracy_hist)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    mcc = matthews_corrcoef(y_true, y_pred)
+    out.write(f"precision_score: {precision:.3f}\n")
+    out.write(f"recall_score: {recall:.3f}\n")
+    out.write(f"f1_score: {f1:.3f}\n")
+    out.write(f"matthews_corr_coef: {mcc:.3f}\n")
 
     if myargs.porn_removal_file is not None:
         porn_removal_file = os.path.basename(myargs.porn_removal_file)
@@ -430,11 +399,6 @@ def write_metadata(myargs, classifier, hgood, hwrong):
     # Writing it by hand (not using YAML libraries) to preserve the order
     out.write("source_lang: {}\n".format(myargs.source_lang))
     out.write("target_lang: {}\n".format(myargs.target_lang))
-    out.write(good_test_hist)
-    out.write(wrong_test_hist)
-    out.write(precision_hist)
-    out.write(recall_hist)
-    out.write(accuracy_hist)
 
     if myargs.porn_removal_file is not None and myargs.porn_removal_train is not None:
         out.write("porn_removal_file: {}\n".format(porn_removal_file))
