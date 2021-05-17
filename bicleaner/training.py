@@ -6,8 +6,6 @@ from fuzzywuzzy import process, fuzz
 import logging
 import os
 import random
-import math
-import typing
 import fasttext
 
 try:

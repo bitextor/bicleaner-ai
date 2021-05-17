@@ -10,7 +10,6 @@ import tensorflow as tf
 import numpy as np
 import argparse
 import logging
-import os
 import random
 import sys
 import shutil
