@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-import tensorflow as tf
 import os
+# Suppress Tenssorflow logging messages unless log level is explictly set
+if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import sys
 import logging
 import traceback
@@ -27,13 +29,14 @@ def initialization():
     parser, groupO, _ = argument_parser()
     args = parser.parse_args()
 
-    # Set number of processes to be used by TensorFlow
-    tf.config.threading.set_intra_op_parallelism_threads(args.processes)
-    tf.config.threading.set_inter_op_parallelism_threads(args.processes)
-
     # Set up logging
     logging_setup(args)
     logging_level = logging.getLogger().level
+    import tensorflow as tf
+
+    # Set number of processes to be used by TensorFlow
+    tf.config.threading.set_intra_op_parallelism_threads(args.processes)
+    tf.config.threading.set_inter_op_parallelism_threads(args.processes)
 
     # Load metadata YAML
     args = load_metadata(args, parser)

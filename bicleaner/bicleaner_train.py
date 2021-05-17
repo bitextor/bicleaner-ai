@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+import os
+# Suppress Tenssorflow logging messages unless log level is explictly set
+if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tempfile import TemporaryFile, NamedTemporaryFile
 from multiprocessing import cpu_count
 from timeit import default_timer
@@ -106,6 +110,10 @@ def initialization():
     # Logging
     logging_setup(args)
     logging_level = logging.getLogger().level
+    if logging_level < logging.INFO:
+        tf.get_logger().setLevel('INFO')
+    else:
+        tf.get_logger().setLevel('CRITICAL')
 
     return args
 

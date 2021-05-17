@@ -59,8 +59,12 @@ def calibrate_output(y_true, y_pred):
         ])
     loss = BinaryCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
     earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=50)
+    if logging.getLogger().level == logging.DEBUG:
+        verbose = 2
+    else:
+        verbose = 0
     model.compile(optimizer=Adam(learning_rate=5e-3), loss=loss)
-    model.fit(y_pred, y_target, epochs=1000, verbose=2,
+    model.fit(y_pred, y_target, epochs=1000, verbose=verbose,
               batch_size=4096,
               callbacks=None)
 
@@ -310,7 +314,8 @@ class BaseModel(ModelInterface):
         num_devices = strategy.num_replicas_in_sync
         with strategy.scope():
             self.model = self.build_model()
-        self.model.summary()
+        if logging.getLogger().level == logging.DEBUG:
+            self.model.summary()
         self.model.fit(train_generator,
                        batch_size=settings["batch_size"],
                        epochs=settings["epochs"],
@@ -550,7 +555,8 @@ class BCXLMRoberta(BaseModel):
                                         from_logits=True),
                                metrics=[FScore(name='f1',
                                                argmax=True)])
-        self.model.summary()
+        if logging.getLogger().level == logging.DEBUG:
+            self.model.summary()
         self.model.fit(train_generator,
                        epochs=self.settings["epochs"],
                        steps_per_epoch=steps_per_epoch,
