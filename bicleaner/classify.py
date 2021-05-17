@@ -13,13 +13,11 @@ import gc
 
 #Allows to load modules while inside or outside the package
 try:
-    from .models import DecomposableAttention
     from .bicleaner_hardrules import wrong_tu
-    from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup
+    from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 except (ImportError, SystemError):
-    from models import DecomposableAttention
     from bicleaner_hardrules import wrong_tu
-    from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup
+    from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 
 __author__ = "Sergio Ortiz Rojas"
 __version__ = "Version 0.1 # 28/12/2017 # Initial release # Sergio Ortiz"
@@ -57,13 +55,11 @@ def argument_parser():
 
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
     groupO.add_argument('-d', '--discarded_tus', type=argparse.FileType('w'), default=None, help="TSV file with discarded TUs. Discarded TUs by the classifier are written in this file in TSV file.")
-    groupO.add_argument('--lm_threshold',type=check_positive_between_zero_and_one, default=0.5, help="Threshold for language model fluency scoring. All TUs whose LM fluency score falls below the threshold will are removed (classifier score set to 0), unless the option --keep_lm_result set.")
-    #groupO.add_argument('--keep_lm_result',action='store_true', help="Add an additional column to the results with the language model fluency score and do not discard any TU based on that score.")
-     
     groupO.add_argument('--score_only',action='store_true', help="Only output one column which is the bicleaner score", default=False)
-     
+    groupO.add_argument('--calibrated',action='store_true', help="Output calibrated scores", default=False)
+    groupO.add_argument('--raw_output',action='store_true', help="Return raw output without computing positive class probability.", default=False)
+
     groupO.add_argument('--disable_hardrules',action = 'store_true', help = "Disables the bicleaner_hardrules filtering (only bicleaner_classify is applied)")
-    groupO.add_argument('--disable_lm_filter', action = 'store_true', help = "Disables LM filtering")
     groupO.add_argument('--disable_porn_removal', default=False, action='store_true', help="Don't apply porn removal")
     groupO.add_argument('--disable_minimal_length', default=False, action='store_true', help="Don't apply minimal length rule")
 
@@ -77,7 +73,7 @@ def argument_parser():
     return parser, groupO, groupL
 
 
-# Load metadata, classifier, lm_filter and porn_removal
+# Load metadata, classifier, porn_removal
 def load_metadata(args, parser):
     try:
         # Load YAML
@@ -94,7 +90,14 @@ def load_metadata(args, parser):
             args.target_tokenizer_command=metadata_yaml["target_tokenizer_command"]
 
         # Load classifier
-        args.clf = DecomposableAttention(yamlpath)
+        if "calibration_params" in metadata_yaml:
+            cal_params = metadata_yaml["calibration_params"]
+            if args.calibrated:
+                logging.info(f"Enabling calibrated output with parameters: {cal_params}")
+        else:
+            cal_params = None
+        args.clf = get_model(metadata_yaml["classifier_type"])(yamlpath,
+                                                metadata_yaml["classifier_settings"])
         args.clf.load()
 
         if "disable_lang_ident" in metadata_yaml:
@@ -102,26 +105,12 @@ def load_metadata(args, parser):
         else:
             args.disable_lang_ident = False
 
-        # Read accuracy histogram
-        threshold = np.argmax(metadata_yaml["accuracy_histogram"])*0.1
-        logging.info("Accuracy histogram: {}".format(metadata_yaml["accuracy_histogram"]))
-        logging.info("Ideal threshold: {:1.1f}".format(threshold))
-        metadata_yaml["threshold"] = threshold
-
-        # Try loading metadata for LM filtering
-        if not args.disable_lm_filter:
-            if not ("source_lm" in metadata_yaml and "target_lm" in metadata_yaml):
-                args.disable_lm_filter = True
-                logging.warning("LM filter not present in metadata, disabling.")
-        else:
-            logging.info("LM filtering disabled")
-
         # Try loading porn_removal model
         if not args.disable_porn_removal:
             if not ("porn_removal_file" in metadata_yaml and "porn_removal_side" in metadata_yaml):
                 args.porn_removal = None
                 args.disable_porn_removal = True
-                logging.warning("Porn removal not present in metadata, disabling.")
+                logging.warning("Porn removal not present in metadata, disabling")
             else:
                 try:
                     args.porn_removal = fasttext.load_model(os.path.join(yamlpath, metadata_yaml['porn_removal_file']))
@@ -146,13 +135,13 @@ def load_metadata(args, parser):
         os.makedirs(args.tmp_dir)
 
     logging.debug("Arguments processed: {}".format(str(args)))
-    logging.info("Arguments processed.")
+    logging.info("Arguments processed")
     return args
 
 
 # Classify sentences from input and place them at output
 # that can be either files or stdin/stdout
-def classify(args, input, output, lm_filter, porn_tokenizer):
+def classify(args, input, output, porn_tokenizer):
     nline = 0
     buf_sent = []
     buf_sent_sl = []
@@ -176,7 +165,8 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
         buf_sent.append(line)
 
         # Buffer sentences that are not empty and pass hardrules
-        if sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, lm_filter, args.porn_removal, porn_tokenizer)== False):
+        # buffer all sentences in raw mode
+        if args.raw_output or (sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, None, args.porn_removal, porn_tokenizer)== False)):
             buf_score.append(1)
             buf_sent_sl.append(sl_sentence)
             buf_sent_tl.append(tl_sentence)
@@ -206,7 +196,10 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
 def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     # Classify predictions
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
-        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl, args.batch_size)
+        predictions = args.clf.predict(buf_sent_sl, buf_sent_tl,
+                                       args.batch_size,
+                                       args.calibrated,
+                                       args.raw_output)
     else:
         predictions = []
     p = iter(predictions)
@@ -214,12 +207,19 @@ def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
     # Print sentences and scores to output
     for score, sent in zip(buf_score, buf_sent):
         if score == 1:
+            clf_score = next(p)
+            # Print 2 scores if raw output is enabled
+            if args.raw_output and len(clf_score) == 2:
+                outscore = f"{clf_score[0]:.3f}\t{clf_score[1]:.3f}"
+            else:
+                outscore = f"{clf_score[0]:.3f}"
+
             if args.score_only:
-                output.write("{0:.3f}".format((next(p)[0])))
+                output.write(outscore)
             else:
                 output.write(sent.strip())
                 output.write("\t")
-                output.write("{0:.3f}".format((next(p)[0])))
+                output.write(outscore)
             output.write("\n")
         else:
             if args.score_only:

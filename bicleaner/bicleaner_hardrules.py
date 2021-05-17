@@ -21,11 +21,11 @@ from timeit import default_timer
 #Allows to load modules while inside or outside the package
 try:
     from .util import logging_setup, check_positive, check_positive_between_zero_and_one
-    from .lm import DualLMFluencyFilter,LMType, DualLMStats
+#    from .lm import DualLMFluencyFilter,LMType, DualLMStats
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from util import logging_setup, check_positive, check_positive_between_zero_and_one
-    from lm import DualLMFluencyFilter,LMType, DualLMStats
+#    from lm import DualLMFluencyFilter,LMType, DualLMStats
     from tokenizer import Tokenizer 
 
 regex_blank = regex.compile("[ \u00A0]")
@@ -170,30 +170,30 @@ def initialization():
 
     return args
     
-def load_lm_filter(source_lang, target_lang, metadata_yaml, source_tokenizer_command, target_tokenizer_command):
-    
-    logging.debug("Loading LM filter")
-
-    lmFilter = DualLMFluencyFilter( LMType[metadata_yaml['lm_type']], source_lang, target_lang, source_tokenizer_command, target_tokenizer_command)
-    stats=DualLMStats(metadata_yaml['clean_mean_perp'], metadata_yaml['clean_stddev_perp'], metadata_yaml['noisy_mean_perp'], metadata_yaml['noisy_stddev_perp'] )
-
-    fullpath_source_lm=os.path.join(metadata_yaml["yamlpath"], metadata_yaml['source_lm'])
-    if os.path.isfile(fullpath_source_lm):
-        source_lm = fullpath_source_lm
-    else:
-        source_lm = metadata_yaml['source_lm']
-        
-        
-    fullpath_target_lm=os.path.join(metadata_yaml["yamlpath"], metadata_yaml['target_lm'])   
-    if os.path.isfile(fullpath_target_lm):
-        target_lm = fullpath_target_lm
-    else:
-        target_lm = metadata_yaml['target_lm']
-    
-    lmFilter.load(source_lm, target_lm, stats)
-    
-    return lmFilter
-                    
+# def load_lm_filter(source_lang, target_lang, metadata_yaml, source_tokenizer_command, target_tokenizer_command):
+#     
+#     logging.debug("Loading LM filter")
+# 
+#     lmFilter = DualLMFluencyFilter( LMType[metadata_yaml['lm_type']], source_lang, target_lang, source_tokenizer_command, target_tokenizer_command)
+#     stats=DualLMStats(metadata_yaml['clean_mean_perp'], metadata_yaml['clean_stddev_perp'], metadata_yaml['noisy_mean_perp'], metadata_yaml['noisy_stddev_perp'] )
+# 
+#     fullpath_source_lm=os.path.join(metadata_yaml["yamlpath"], metadata_yaml['source_lm'])
+#     if os.path.isfile(fullpath_source_lm):
+#         source_lm = fullpath_source_lm
+#     else:
+#         source_lm = metadata_yaml['source_lm']
+#         
+#         
+#     fullpath_target_lm=os.path.join(metadata_yaml["yamlpath"], metadata_yaml['target_lm'])   
+#     if os.path.isfile(fullpath_target_lm):
+#         target_lm = fullpath_target_lm
+#     else:
+#         target_lm = metadata_yaml['target_lm']
+#     
+#     lmFilter.load(source_lm, target_lm, stats)
+#     
+#     return lmFilter
+#                     
 
 def c_identical(left, right, left_lang, right_lang):
     if left_lang =="nb":
@@ -414,8 +414,8 @@ def wrong_tu(left, right, args, lm_filter = None, porn_removal = None, porn_toke
         return "c_reliable_long_language(right, targetlang)"
     elif not args.disable_porn_removal and porn_removal != None and not c_no_porn(left, right, porn_removal, args.metadata_yaml['porn_removal_side'], porn_tokenizer):
         return "c_no_porn"
-    elif  args.disable_lm_filter == False and lm_filter != None and lm_filter.score(left, right) < args.lm_threshold:    
-        return "lm_filter.score(left, right) < args.lm_threshold"
+    # elif  args.disable_lm_filter == False and lm_filter != None and lm_filter.score(left, right) < args.lm_threshold:    
+    #     return "lm_filter.score(left, right) < args.lm_threshold"
     return False
     
     
@@ -463,10 +463,10 @@ def reduce_process(output_queue, args):
     args.output.close()
     
 def worker_process(i, jobs_queue, output_queue, args):
-    if not args.disable_lm_filter:
-        lm_filter = load_lm_filter(args.source_lang, args.target_lang, args.metadata_yaml, args.source_tokenizer_command, args.target_tokenizer_command)
-    else:
-        lm_filter = None
+    # if not args.disable_lm_filter:
+    #     lm_filter = load_lm_filter(args.source_lang, args.target_lang, args.metadata_yaml, args.source_tokenizer_command, args.target_tokenizer_command)
+    # else:
+    lm_filter = None
 
     if not args.disable_porn_removal:
         porn_removal = args.porn_removal

@@ -14,10 +14,12 @@ from tensorflow.keras import backend as K
 import numpy as np
 
 try:
-    from .metrics import FScore
+    from .losses import KDLoss
+    from .metrics import MatthewsCorrCoef
     from .layers import TokenAndPositionEmbedding
 except (SystemError, ImportError):
-    from metrics import FScore
+    from losses import KDLoss
+    from metrics import MatthewsCorrCoef
     from layers import TokenAndPositionEmbedding
 
 def build_model(vectors, settings):
@@ -35,20 +37,37 @@ def build_model(vectors, settings):
     b = embed(input2)
 
     # step 1: attend
+    # self-attend
+    if settings["self_attention"]:
+        S_a = create_feedforward(nr_hidden, dropout=settings["dropout"])
+        S_b = create_feedforward(nr_hidden, dropout=settings["dropout"])
+        a_p = layers.Attention()([S_a(a), S_a(a)])
+        b_p = layers.Attention()([S_b(b), S_b(b)])
+        # self_att_a = layers.dot([S_a(a), S_a(a)], axes=-1)
+        # self_att_b = layers.dot([S_b(b), S_b(b)], axes=-1)
+        # self_norm_a = layers.Lambda(normalizer(1))(self_att_a)
+        # self_norm_b = layers.Lambda(normalizer(1))(self_att_b)
+        # a_p = layers.dot([self_norm_a, a], axes=1)
+        # b_p = layers.dot([self_norm_b, b], axes=1)
+    else:
+        a_p = a
+        b_p = b
+
+    # attend
     F = create_feedforward(nr_hidden, dropout=settings["dropout"])
-    att_weights = layers.dot([F(a), F(b)], axes=-1)
+    att_weights = layers.dot([F(a_p), F(b_p)], axes=-1)
 
     G = create_feedforward(nr_hidden)
 
     if settings["entail_dir"] == "both":
         norm_weights_a = layers.Lambda(normalizer(1))(att_weights)
         norm_weights_b = layers.Lambda(normalizer(2))(att_weights)
-        alpha = layers.dot([norm_weights_a, a], axes=1)
-        beta = layers.dot([norm_weights_b, b], axes=1)
+        alpha = layers.dot([norm_weights_a, a_p], axes=1)
+        beta = layers.dot([norm_weights_b, b_p], axes=1)
 
         # step 2: compare
-        comp1 = layers.concatenate([a, beta])
-        comp2 = layers.concatenate([b, alpha])
+        comp1 = layers.concatenate([a_p, beta])
+        comp2 = layers.concatenate([b_p, alpha])
         v1 = layers.TimeDistributed(G)(comp1)
         v2 = layers.TimeDistributed(G)(comp2)
 
@@ -75,19 +94,20 @@ def build_model(vectors, settings):
 
     H = create_feedforward(nr_hidden, dropout=settings["dropout"])
     out = H(concat)
-    if settings['loss'] == 'categorical_crossentropy':
-        out = layers.Dense(nr_class, activation="softmax")(out)
+    if settings['distilled']:
+        out = layers.Dense(nr_class)(out)
+        loss = KDLoss(settings["batch_size"])
     else:
-        out = layers.Dense(nr_class, activation="sigmoid")(out)
+        out = layers.Dense(nr_class)(out)
+        out = layers.Activation('sigmoid', dtype='float32')(out)
+        loss = settings["loss"]
 
     model = Model([input1, input2], out)
 
-    model.compile(
-        optimizer=Adam(learning_rate=settings["scheduler"], clipnorm=settings["clipnorm"]),
-        loss=settings["loss"],
-        metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')],
-        experimental_run_tf_function=False,
-    )
+    model.compile(optimizer=settings["optimizer"],
+                  loss=loss,
+                  metrics=settings["metrics"](), # Call get_metrics
+                  experimental_run_tf_function=False,)
 
     return model
 
@@ -103,7 +123,11 @@ def create_embedding(vectors, max_length, projected_dim, trainable=False):
             #     trainable=trainable,
             #     mask_zero=True,
             # ),
-            TokenAndPositionEmbedding(vectors, max_length, trainable),
+            TokenAndPositionEmbedding(vectors.shape[0],
+                                      vectors.shape[1],
+                                      max_length,
+                                      vectors,
+                                      trainable),
             layers.TimeDistributed(
                 layers.Dense(projected_dim, activation=None, use_bias=False,
                     kernel_regularizer=None)
