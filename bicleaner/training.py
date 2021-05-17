@@ -62,7 +62,7 @@ def sentence_noise(i, src, trg, args):
     tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     for j in range(args.freq_ratio):
         t_toks = tokenizer.tokenize(trg[i])
-        replaced = add_freqency_replacement_noise_to_sentence(t_toks, args.tl_word_freqs)
+        replaced = replace_freq_words(t_toks, args.tl_word_freqs)
         if replaced is not None:
             sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
 
@@ -70,7 +70,7 @@ def sentence_noise(i, src, trg, args):
     tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     for j in range(args.womit_ratio):
         t_toks = tokenizer.tokenize(trg[i])
-        omitted = remove_words_randomly_from_sentence(t_toks)
+        omitted = omit_words(t_toks)
         sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
 
     # Misalginment by fuzzy matching
@@ -206,119 +206,8 @@ def build_noise(input, args):
 
     return output_file.name
 
-# Random shuffle corpora to ensure fairness of training and estimates.
-def build_noisy_set(input, wrong_examples_file, double_linked_zipf_freqs=None, noisy_target_tokenizer=None):
-    good_sentences  = TemporaryFile("w+")
-    wrong_sentences = TemporaryFile("w+")
-    total_size   = 0
-    length_ratio = 0
-
-    with TemporaryFile("w+") as temp:
-        # (1) Calculate the number of lines, length_ratio, offsets
-        offsets = []
-        nline = 0
-        ssource = 0
-        starget = 0
-        count = 0
-
-        for line in input:
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) >= 2:
-                offsets.append(count)
-                count += len(bytearray(line, "UTF-8"))
-                ssource += len(parts[0])
-                starget += len(parts[1])
-                nline += 1
-                temp.write(line)
-
-        temp.flush()
-
-        total_size = nline
-        n_aligned = total_size//2
-        n_misaligned = total_size//2
-
-        if total_size == 0:
-            raise Exception("The input file {} is empty".format(input.name))
-        elif not wrong_examples_file and  total_size < max(n_aligned, n_misaligned):
-            raise Exception("Aborting... The input file {} has less lines than required by the numbers of good ({}) and wrong ({}) examples. Total lines required: {}".format(input.name, n_aligned, n_misaligned, n_aligned + n_misaligned))
-
-        try:
-            length_ratio = (ssource * 1.0)/(starget * 1.0) # It was (starget * 1.0)/(ssource * 1.0)
-        except ZeroDivisionError:
-            length_ratio = math.nan
-
-        # (2) Get good sentences
-        random.shuffle(offsets)
-
-        for i in offsets[0:n_aligned]:
-            temp.seek(i)
-            good_sentences.write(temp.readline())
-
-        # (3) Get wrong sentences
-        if wrong_examples_file:
-            # The file is already shuffled
-            logging.info("Using wrong examples from file {} instead the synthetic method".format(wrong_examples_file.name))
-
-            for i in wrong_examples_file:
-                wrong_sentences.write(i)
-        else:
-            init_wrong_offsets = n_aligned+1
-            end_wrong_offsets = min(n_aligned+n_misaligned, len(offsets))
-            freq_noise_end_offset = n_aligned + int((end_wrong_offsets-n_aligned)/3)
-            shuf_noise_end_offset = n_aligned + int(2 * (end_wrong_offsets-n_aligned) / 3)
-            deletion_noise_end_offset = end_wrong_offsets
-            if double_linked_zipf_freqs is not None:
-                frequence_based_noise(init_wrong_offsets, freq_noise_end_offset, offsets, temp, wrong_sentences,
-                                     double_linked_zipf_freqs, noisy_target_tokenizer)
-            shuffle_noise(freq_noise_end_offset+1, shuf_noise_end_offset, offsets, temp, wrong_sentences)
-            missing_words_noise(shuf_noise_end_offset+1, deletion_noise_end_offset, offsets, temp, wrong_sentences,
-                                noisy_target_tokenizer)
-        temp.close()
-
-    good_sentences.seek(0)
-    wrong_sentences.seek(0)
-
-    return total_size, length_ratio, good_sentences, wrong_sentences
-
-# Random shuffle corpora to ensure fairness of training and estimates.
-def shuffle_noise(from_idx, to_idx, offsets, temp, wrong_sentences):
-    random_idxs = list(range(from_idx, to_idx))
-    random.shuffle ( random_idxs )
-    sorted_idx = range(from_idx, to_idx)
-    for sidx,tidx in zip(sorted_idx, random_idxs):
-        temp.seek(offsets[sidx])
-        line = temp.readline()
-        parts = line.rstrip("\n").split("\t")
-        sline = parts[0]
-
-        temp.seek(offsets[tidx])
-        line = temp.readline()
-        parts = line.rstrip("\n").split("\t")
-        tline = parts[1]
-
-        wrong_sentences.write(sline)
-        wrong_sentences.write("\t")
-        wrong_sentences.write(tline)
-        wrong_sentences.write("\n")
-
-# Random shuffle corpora to ensure fairness of training and estimates.
-def frequence_based_noise(from_idx, to_idx, offsets, temp, wrong_sentences, double_linked_zipf_freqs,
-                         noisy_target_tokenizer):
-    for i in offsets[from_idx:to_idx+1]:
-        temp.seek(i)
-        line = temp.readline()
-        parts = line.rstrip("\n").split("\t")
-
-        t_toks = noisy_target_tokenizer.tokenize(parts[1])
-
-        parts[1] = noisy_target_tokenizer.detokenize(add_freqency_replacement_noise_to_sentence(t_toks, double_linked_zipf_freqs))
-        wrong_sentences.write(parts[0])
-        wrong_sentences.write("\t")
-        wrong_sentences.write(parts[1])
-        wrong_sentences.write("\n")
-
-# Introduce noise to sentences using word frequence
-def add_freqency_replacement_noise_to_sentence(sentence, double_linked_zipf_freqs):
+# Randomly replace words with other words of same frequency
+def replace_freq_words(sentence, double_linked_zipf_freqs):
     count = 0
     sent_orig = sentence[:]
     # Loop until any of the chosen words have an alternative, at most 3 times
@@ -348,21 +237,8 @@ def add_freqency_replacement_noise_to_sentence(sentence, double_linked_zipf_freq
 
     return sentence
 
-
-# Random shuffle corpora to ensure fairness of training and estimates.
-def missing_words_noise(from_idx, to_idx, offsets, temp, wrong_sentences, noisy_target_tokenizer):
-    for i in offsets[from_idx:to_idx+1]:
-        temp.seek(i)
-        line = temp.readline()
-        parts = line.rstrip("\n").split("\t")
-        t_toks = noisy_target_tokenizer.tokenize(parts[1])
-        parts[1] = noisy_target_tokenizer.detokenize(remove_words_randomly_from_sentence(t_toks))
-        wrong_sentences.write(parts[0])
-        wrong_sentences.write("\t")
-        wrong_sentences.write(parts[1])
-        wrong_sentences.write("\n")
-
-def remove_words_randomly_from_sentence(sentence):
+# Randomly omit words in a sentence
+def omit_words(sentence):
     num_words_deleted = random.randint(1, len(sentence))
     idx_words_to_delete = sorted(random.sample(range(len(sentence)), num_words_deleted), reverse=True)
     for wordpos in idx_words_to_delete:
