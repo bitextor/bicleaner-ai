@@ -67,7 +67,6 @@ def perform_classification(args):
     logging.info("Troughput: {0} rows/s".format(int((nline*1.0)/elapsed_time)))
 
 def main(args):
-    logging.info("Executing main program...")
     perform_classification(args)
     logging.info("Program finished")
 

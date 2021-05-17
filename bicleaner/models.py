@@ -226,9 +226,9 @@ class BaseModel(ModelInterface):
 
     def load_embed(self):
         '''Loads embeddings from model directory'''
-        logging.info("Loading SentenePiece Glove vectors")
         glove = Glove().load(self.dir+'/'+self.settings["wv_file"])
         self.wv = glove.word_vectors
+        logging.info("Loaded SentenePiece Glove vectors")
 
     def load(self):
         '''Loads the whole model'''

@@ -136,20 +136,20 @@ def perform_training(args):
     if (args.save_train_data is None
             or not os.path.isfile(args.save_train_data)
             or os.stat(args.save_train_data).st_size == 0):
-        logging.info("Building training set.")
+        logging.info("Building training set")
         train_sentences = build_noise(args.parallel_train, args)
         if args.save_train_data is not None:
             shutil.copyfile(train_sentences, args.save_train_data)
     else:
         train_sentences = args.save_train_data
         logging.info("Using pre-built training set: " + train_sentences)
-    logging.info("Building development set.")
+    logging.info("Building development set")
     test_sentences = build_noise(args.parallel_test, args)
     dev_sentences = test_sentences
     logging.debug(f"Training sentences file: {train_sentences}")
     logging.debug(f"Development sentences file: {dev_sentences}")
 
-    logging.info("Start training.")
+    logging.info("Start training")
 
     model_settings = {
         "batch_size": args.batch_size,
@@ -175,15 +175,15 @@ def perform_training(args):
     if args.save_train_data is not None and train_sentences != args.save_train_data:
         os.unlink(train_sentences)
     os.unlink(dev_sentences)
-    logging.info("End training.")
+    logging.info("End training")
 
     write_metadata(args, classifier, y_true, y_pred)
     args.metadata.close()
 
     # Stats
-    logging.info("Finished.")
+    logging.info("Finished")
     elapsed_time = default_timer() - time_start
-    logging.info("Elapsed time {:.2f}s.".format(elapsed_time))
+    logging.info("Elapsed time {:.2f}s".format(elapsed_time))
 
 # Main function: setup logging and calling the main loop
 def main(args):

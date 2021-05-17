@@ -110,7 +110,7 @@ def load_metadata(args, parser):
             if not ("porn_removal_file" in metadata_yaml and "porn_removal_side" in metadata_yaml):
                 args.porn_removal = None
                 args.disable_porn_removal = True
-                logging.warning("Porn removal not present in metadata, disabling.")
+                logging.warning("Porn removal not present in metadata, disabling")
             else:
                 try:
                     args.porn_removal = fasttext.load_model(os.path.join(yamlpath, metadata_yaml['porn_removal_file']))
@@ -135,7 +135,7 @@ def load_metadata(args, parser):
         os.makedirs(args.tmp_dir)
 
     logging.debug("Arguments processed: {}".format(str(args)))
-    logging.info("Arguments processed.")
+    logging.info("Arguments processed")
     return args
 
 
