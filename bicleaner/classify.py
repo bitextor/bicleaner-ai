@@ -1,3 +1,4 @@
+from hardrules.hardrules import wrong_tu
 from multiprocessing import cpu_count
 from tempfile import gettempdir
 import tensorflow as tf
@@ -13,10 +14,8 @@ import gc
 
 #Allows to load modules while inside or outside the package
 try:
-    from .bicleaner_hardrules import wrong_tu
     from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 except (ImportError, SystemError):
-    from bicleaner_hardrules import wrong_tu
     from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 
 __author__ = "Sergio Ortiz Rojas"
@@ -60,6 +59,7 @@ def argument_parser():
     groupO.add_argument('--raw_output',action='store_true', help="Return raw output without computing positive class probability.", default=False)
 
     groupO.add_argument('--disable_hardrules',action = 'store_true', help = "Disables the bicleaner_hardrules filtering (only bicleaner_classify is applied)")
+    groupO.add_argument('--disable_lm_filter', action = 'store_true', help = "Disables LM filtering")
     groupO.add_argument('--disable_porn_removal', default=False, action='store_true', help="Don't apply porn removal")
     groupO.add_argument('--disable_minimal_length', default=False, action='store_true', help="Don't apply minimal length rule")
 
@@ -73,7 +73,7 @@ def argument_parser():
     return parser, groupO, groupL
 
 
-# Load metadata, classifier, porn_removal
+# Load metadata, classifier, lm_filter and porn_removal
 def load_metadata(args, parser):
     try:
         # Load YAML
@@ -104,6 +104,14 @@ def load_metadata(args, parser):
             args.disable_lang_ident = metadata_yaml["disable_lang_ident"]
         else:
             args.disable_lang_ident = False
+
+        # Try loading metadata for LM filtering
+        if not args.disable_lm_filter:
+            if not ("source_lm" in metadata_yaml and "target_lm" in metadata_yaml):
+                args.disable_lm_filter = True
+                logging.warning("LM filter not present in metadata, disabling.")
+        else:
+            logging.info("LM filtering disabled")
 
         # Try loading porn_removal model
         if not args.disable_porn_removal:
@@ -141,7 +149,7 @@ def load_metadata(args, parser):
 
 # Classify sentences from input and place them at output
 # that can be either files or stdin/stdout
-def classify(args, input, output, porn_tokenizer):
+def classify(args, input, output, lm_filter, porn_tokenizer):
     nline = 0
     buf_sent = []
     buf_sent_sl = []
@@ -166,7 +174,7 @@ def classify(args, input, output, porn_tokenizer):
 
         # Buffer sentences that are not empty and pass hardrules
         # buffer all sentences in raw mode
-        if args.raw_output or (sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence,tl_sentence, args, None, args.porn_removal, porn_tokenizer)== False)):
+        if args.raw_output or (sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence, tl_sentence, args, lm_filter, args.porn_removal, porn_tokenizer)== False)):
             buf_score.append(1)
             buf_sent_sl.append(sl_sentence)
             buf_sent_tl.append(tl_sentence)

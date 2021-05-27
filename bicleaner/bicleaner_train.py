@@ -3,7 +3,7 @@ import os
 # Suppress Tenssorflow logging messages unless log level is explictly set
 if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from tempfile import TemporaryFile, NamedTemporaryFile
+from tempfile import TemporaryFile, NamedTemporaryFile, gettempdir
 from multiprocessing import cpu_count
 from timeit import default_timer
 import tensorflow as tf
@@ -19,13 +19,13 @@ try:
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import *
-    from .training import build_noise, write_metadata, train_porn_removal
+    from .training import build_noise, write_metadata
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import *
-    from training import build_noise, write_metadata, train_porn_removal
+    from training import build_noise, write_metadata
     from tokenizer import Tokenizer
 
 logging_level = 0
@@ -71,10 +71,22 @@ def initialization():
     groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
     groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
 
+    # Porn removal training options
     groupO.add_argument('--porn_removal_train', type=argparse.FileType('r'), help="File with training dataset for FastText classifier. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.")
     groupO.add_argument('--porn_removal_test', type=argparse.FileType('r'), help="Test set to compute precision and accuracy of the porn removal classifier")
     groupO.add_argument('--porn_removal_file', type=str, default="porn_removal.bin", help="Porn removal classifier output file")
     groupO.add_argument('--porn_removal_side', choices=['sl','tl'], default="sl", help="Whether the porn removal should be applied at the source or at the target language.")
+
+    # LM fluency filter training options
+    groupO.add_argument('--noisy_examples_file_sl', type=str, help="File with noisy text in the SL. These are used to estimate the perplexity of noisy text.")
+    groupO.add_argument('--noisy_examples_file_tl', type=str, help="File with noisy text in the TL. These are used to estimate the perplexity of noisy text.")
+    groupO.add_argument('--lm_dev_size', type=check_positive_or_zero, default=2000, help="Number of sentences to be removed from clean text before training LMs. These are used to estimate the perplexity of clean text.")
+    groupO.add_argument('--lm_file_sl', type=str, help="SL language model output file.")
+    groupO.add_argument('--lm_file_tl', type=str, help="TL language model output file.")
+    groupO.add_argument('--lm_training_file_sl', type=str, help="SL text from which the SL LM is trained. If this parameter is not specified, SL LM is trained from the SL side of the input file, after removing --lm_dev_size sentences.")
+    groupO.add_argument('--lm_training_file_tl', type=str, help="TL text from which the TL LM is trained. If this parameter is not specified, TL LM is trained from the TL side of the input file, after removing --lm_dev_size sentences.")
+    groupO.add_argument('--lm_clean_examples_file_sl', type=str, help="File with clean text in the SL. Used to estimate the perplexity of clean text. This option must be used together with --lm_training_file_sl and both files must not have common sentences. This option replaces --lm_dev_size.")
+    groupO.add_argument('--lm_clean_examples_file_tl', type=str, help="File with clean text in the TL. Used to estimate the perplexity of clean text. This option must be used together with --lm_training_file_tl and both files must not have common sentences. This option replaces --lm_dev_size.")
 
     groupL = parser.add_argument_group('Logging')
     groupL.add_argument('-q', '--quiet', action='store_true', help='Silent logging mode')
@@ -104,6 +116,17 @@ def initialization():
     if args.freq_ratio > 0 and args.target_word_freqs is None:
         raise Exception("Frequence based noise needs target language word frequencies")
 
+    # Remove trailing / in model dir
+    args.model_dir.rstrip('/')
+
+    # If the model files are basenames, prepend model path
+    if args.lm_file_sl.count('/') == 0:
+        args.lm_file_sl = args.model_dir + '/' + args.lm_file_sl
+    if args.lm_file_tl.count('/') == 0:
+        args.lm_file_tl = args.model_dir + '/' + args.lm_file_tl
+    if args.porn_removal_file.count('/') == 0:
+        args.porn_removal_file = args.model_dir + '/' + args.porn_removal_file
+
     args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
 
     # Logging
@@ -130,7 +153,9 @@ def perform_training(args):
         args.tl_word_freqs = None
 
     # Train porn removal classifier
-    train_porn_removal(args)
+    if args.porn_removal_file is not None and args.porn_removal_train is not None:
+        from hardrules.training import train_porn_removal
+        train_porn_removal(args)
 
     if (args.save_train_data is None
             or not os.path.isfile(args.save_train_data)
@@ -147,6 +172,14 @@ def perform_training(args):
     dev_sentences = test_sentences
     logging.debug(f"Training sentences file: {train_sentences}")
     logging.debug(f"Development sentences file: {dev_sentences}")
+
+    # Train LM fluency filter
+    if args.lm_file_sl and args.lm_file_tl:
+        from hardrules.training import train_fluency_filter
+        args.parallel_train.seek(0)
+        args.input = args.parallel_train
+        lm_stats = train_fluency_filter(args)
+    args.parallel_train.close()
 
     logging.info("Start training")
 
@@ -176,7 +209,7 @@ def perform_training(args):
     os.unlink(dev_sentences)
     logging.info("End training")
 
-    write_metadata(args, classifier, y_true, y_pred)
+    write_metadata(args, classifier, y_true, y_pred, lm_stats)
     args.metadata.close()
 
     # Stats

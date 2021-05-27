@@ -253,10 +253,15 @@ def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
             result_str.append("]")
     return "".join(result_str)
 
+# Check if a file path is relative to a path
+def check_relative_path(path, filepath):
+    file_abs = os.path.abspath(filepath)
+    path_abs = os.path.abspath(path.rstrip('/')) # remove trailing / for safety
+    return file_abs.replace(path_abs + '/', '').count('/') == 0
 
 # Write YAML with the training parameters and quality estimates
-def write_metadata(myargs, classifier, y_true, y_pred):
-    out = myargs.metadata
+def write_metadata(args, classifier, y_true, y_pred, lm_stats):
+    out = args.metadata
 
     precision = precision_score(y_true, y_pred)
     recall = recall_score(y_true, y_pred)
@@ -267,24 +272,45 @@ def write_metadata(myargs, classifier, y_true, y_pred):
     out.write(f"f1_score: {f1:.3f}\n")
     out.write(f"matthews_corr_coef: {mcc:.3f}\n")
 
-    if myargs.porn_removal_file is not None:
-        porn_removal_file = os.path.basename(myargs.porn_removal_file)
 
     # Writing it by hand (not using YAML libraries) to preserve the order
-    out.write("source_lang: {}\n".format(myargs.source_lang))
-    out.write("target_lang: {}\n".format(myargs.target_lang))
+    out.write(f"source_lang: {args.source_lang}\n")
+    out.write(f"target_lang: {args.target_lang}\n")
 
-    if myargs.porn_removal_file is not None and myargs.porn_removal_train is not None:
-        out.write("porn_removal_file: {}\n".format(porn_removal_file))
-        out.write("porn_removal_side: {}\n".format(myargs.porn_removal_side))
+    # Save base names only if directories are relative
+    if check_relative_path(args.model_dir, args.porn_removal_file):
+        porn_removal_file = os.path.basename(args.porn_removal_file)
+    else:
+        porn_removal_file = args.porn_removal_file
+    if check_relative_path(args.model_dir, args.lm_file_sl):
+        lm_file_sl = os.path.basename(args.lm_file_sl)
+    else:
+        lm_file_sl = args.lm_file_sl
+    if check_relative_path(args.model_dir, args.lm_file_tl):
+        lm_file_tl = os.path.basename(args.lm_file_tl)
+    else:
+        lm_file_tl = args.lm_file_tl
 
-    if myargs.source_tokenizer_command is not None:
-        out.write("source_tokenizer_command: {}\n".format(myargs.source_tokenizer_command))
-    if myargs.target_tokenizer_command is not None:
-        out.write("target_tokenizer_command: {}\n".format(myargs.target_tokenizer_command))
+    if args.porn_removal_file is not None and args.porn_removal_train is not None:
+        out.write(f"porn_removal_file: {porn_removal_file}\n")
+        out.write(f"porn_removal_side: {args.porn_removal_side}\n")
+
+    if lm_stats is not None and args.lm_file_sl is not None and args.lm_file_tl is not None:
+        out.write(f"source_lm: {lm_file_sl}\n")
+        out.write(f"target_lm: {lm_file_tl}\n")
+        out.write(f"lm_type: CHARACTER\n")
+        out.write(f"clean_mean_perp: {lm_stats.clean_mean}\n")
+        out.write(f"clean_stddev_perp: {lm_stats.clean_stddev}\n")
+        out.write(f"noisy_mean_perp: {lm_stats.noisy_mean}\n")
+        out.write(f"noisy_stddev_perp: {lm_stats.noisy_stddev}\n")
+
+    if args.source_tokenizer_command is not None:
+        out.write(f"source_tokenizer_command: {args.source_tokenizer_command}\n")
+    if args.target_tokenizer_command is not None:
+        out.write(f"target_tokenizer_command: {args.target_tokenizer_command}\n")
 
     # Save classifier
-    out.write(f"classifier_type: {myargs.classifier_type}\n")
+    out.write(f"classifier_type: {args.classifier_type}\n")
 
     # Save classifier train settings
     out.write("classifier_settings:\n")
