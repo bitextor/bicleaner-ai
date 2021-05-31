@@ -48,7 +48,24 @@ def calibrate_output(y_true, y_pred):
     # Define target values
     n_pos = np.sum(y_true == 1)
     n_neg = np.sum(y_true == 0)
-    y_target = np.where(y_true == 1, (n_pos+1)/(n_pos+2), y_true)
+    if n_pos < n_neg:
+        # Separate pos and neg
+        y_true_pos = np.extract(y_true == 1, y_true)
+        y_true_neg = np.extract(y_true == 0, y_true)
+        y_pred_pos = np.extract(y_true == 1, y_pred)
+        y_pred_neg = np.extract(y_true == 0, y_pred)
+        # Shuffle by index to shuffle with the same pattern preds and labels
+        # and avoid srewing up labels
+        idx_neg = np.arange(len(y_true_neg))
+        np.random.shuffle(idx_neg)
+        # Extract from the shuffle the same amount of neg and pos
+        y_true_balanced = np.append(y_true_neg[idx_neg][:len(y_true_pos)], y_true_pos)
+        y_pred_balanced = np.append(y_pred_neg[idx_neg][:len(y_pred_pos)], y_pred_pos)
+    else:
+        y_true_balanced = y_true
+        y_pred_balanced = y_pred
+
+    y_target = np.where(y_true_balanced == 1, (n_pos+1)/(n_pos+2), y_true_balanced)
     y_target = np.where(y_target == 0, 1/(n_neg+2), y_target)
 
     # Parametrized sigmoid is equivalent to
@@ -58,25 +75,28 @@ def calibrate_output(y_true, y_pred):
             tf.keras.layers.Dense(1, activation='sigmoid'),
         ])
     loss = BinaryCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=50)
+    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50)
     if logging.getLogger().level == logging.DEBUG:
         verbose = 2
     else:
         verbose = 0
     model.compile(optimizer=Adam(learning_rate=5e-3), loss=loss)
-    model.fit(y_pred, y_target, epochs=1000, verbose=verbose,
+    model.fit(y_pred_balanced, y_target, epochs=5000, verbose=verbose,
               batch_size=4096,
-              callbacks=None)
+              validation_split=0.1,
+              callbacks=[earlystop])
 
     # Check mcc hasn't been affected
-    y_pred = model.predict(y_pred)
-    end_mcc = matthews_corrcoef(y_true, np.where(y_pred>=0.5, 1, 0))
+    y_pred_calibrated = model.predict(y_pred)
+    end_mcc = matthews_corrcoef(y_true, np.where(y_pred_calibrated>=0.5, 1, 0))
+    logging.debug(f"MCC with calibrated output: {end_mcc}")
     if (init_mcc - end_mcc) > 0.02:
         logging.warning(f"Calibration has decreased MCC from {init_mcc:.4f} to {end_mcc:.4f}")
 
     # Obtain scalar values from model weights
     A = float(model.layers[0].weights[0].numpy()[0][0])
     B = float(model.layers[0].weights[1].numpy()[0])
+    logging.debug(f"Calibrated parameters: {A} * x + {B}")
     return A, B
 
 class ModelInterface(ABC):
