@@ -90,8 +90,8 @@ def load_metadata(args, parser):
             args.target_tokenizer_command=metadata_yaml["target_tokenizer_command"]
 
         # Load classifier
-        if "calibration_params" in metadata_yaml:
-            cal_params = metadata_yaml["calibration_params"]
+        if "calibration_params" in metadata_yaml["classifier_settings"]:
+            cal_params = metadata_yaml["classifier_settings"]["calibration_params"]
             if args.calibrated:
                 logging.info(f"Enabling calibrated output with parameters: {cal_params}")
         else:

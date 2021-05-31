@@ -316,5 +316,8 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
     out.write("classifier_settings:\n")
     for key in sorted(classifier.settings.keys()):
         # Don't print objects
-        if type(classifier.settings[key]) in [int, str]:
-            out.write("    " + key + ": " + str(classifier.settings[key]) + "\n")
+        if type(classifier.settings[key]) in [int, str, list, tuple]:
+            if type(classifier.settings[key]) in [list, tuple]:
+                out.write("    " + key + ": " + repr_right(classifier.settings[key]) + "\n")
+            else:
+                out.write("    " + key + ": " + str(classifier.settings[key]) + "\n")
