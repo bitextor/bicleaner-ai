@@ -40,7 +40,7 @@ def initialization():
     groupM.add_argument('-m', '--model_dir', type=check_dir, required=True, help="Model directory, metadata, classifier and SentencePiece models will be saved in the same directory")
     groupM.add_argument('-s', '--source_lang', required=True, help="Source language")
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
-    groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=True, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings")
+    groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=False, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings. Not required for XLMR.")
     groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to train the classifier")
     groupM.add_argument('--parallel_dev', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences for development")
 
@@ -94,6 +94,12 @@ def initialization():
     groupL.add_argument('--logfile', type=argparse.FileType('a'), default=sys.stderr, help="Store log to a file")
 
     args = parser.parse_args()
+
+    if args.freq_ratio > 0 and args.target_word_freqs is None:
+        raise Exception("Frequence based noise needs target language word frequencies")
+    if args.mono_train is None and args.classifier_type is not 'xlmr':
+        raise Exception("Argument --mono_train not found, required when not training XLMR classifier")
+
     if args.seed is not None:
         np.random.seed(args.seed)
         random.seed(args.seed)
@@ -112,9 +118,6 @@ def initialization():
     if args.mixed_precision:
         from tensorflow.keras import mixed_precision
         mixed_precision.set_global_policy('mixed_float16')
-
-    if args.freq_ratio > 0 and args.target_word_freqs is None:
-        raise Exception("Frequence based noise needs target language word frequencies")
 
     # Remove trailing / in model dir
     args.model_dir.rstrip('/')
