@@ -42,7 +42,7 @@ def initialization():
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
     groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=True, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings")
     groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to train the classifier")
-    groupM.add_argument('--parallel_test', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to test the classifier")
+    groupM.add_argument('--parallel_dev', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences for development")
 
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
@@ -168,7 +168,7 @@ def perform_training(args):
         train_sentences = args.save_train_data
         logging.info("Using pre-built training set: " + train_sentences)
     logging.info("Building development set")
-    test_sentences = build_noise(args.parallel_test, args)
+    test_sentences = build_noise(args.parallel_dev, args)
     dev_sentences = test_sentences
     logging.debug(f"Training sentences file: {train_sentences}")
     logging.debug(f"Development sentences file: {dev_sentences}")
@@ -180,6 +180,7 @@ def perform_training(args):
         args.input = args.parallel_train
         lm_stats = train_fluency_filter(args)
     args.parallel_train.close()
+    args.parallel_dev.close()
 
     logging.info("Start training")
 
