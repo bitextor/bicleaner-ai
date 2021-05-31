@@ -98,7 +98,7 @@ def initialization():
 
     if args.freq_ratio > 0 and args.target_word_freqs is None:
         raise Exception("Frequence based noise needs target language word frequencies")
-    if args.mono_train is None and args.classifier_type is not 'xlmr':
+    if args.mono_train is None and args.classifier_type != 'xlmr':
         raise Exception("Argument --mono_train not found, required when not training XLMR classifier")
 
     if args.seed is not None:
