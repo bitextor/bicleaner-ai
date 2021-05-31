@@ -59,9 +59,10 @@ def initialization():
 
     # Classifier training options
     groupO.add_argument('--classifier_type', choices=model_classes.keys(), default="dec_attention", help="Neural network architecture of the classifier")
-    groupO.add_argument('--batch_size', type=int, default=None, help="Batch size during classifier training. If None, default architecture value will be used.")
-    groupO.add_argument('--steps_per_epoch', type=int, default=None, help="Number of batch updatesper epoch during training. If None, default architecture value will be used.")
-    groupO.add_argument('--epochs', type=int, default=None, help="Number of epochs for training. If None, default architecture value will be used.")
+    groupO.add_argument('--batch_size', type=check_positive, default=None, help="Batch size during classifier training. If None, default architecture value will be used.")
+    groupO.add_argument('--steps_per_epoch', type=check_positive, default=None, help="Number of batch updates per epoch during training. If None, default architecture value will be used or the full dataset size.")
+    groupO.add_argument('--epochs', type=check_positive, default=None, help="Number of epochs for training. If None, default architecture value will be used.")
+    groupO.add_argument('--patience', type=check_positive, default=None, help="Stop training when validation has stopped improving after PATIENCE number of epochs")
 
     # Negative sampling options
     groupO.add_argument('--pos_ratio', default=1, type=int, help="Ratio of positive samples used to oversample on validation and test sets")
