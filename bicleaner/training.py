@@ -318,6 +318,6 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
         # Don't print objects
         if type(classifier.settings[key]) in [int, str, list, tuple]:
             if type(classifier.settings[key]) in [list, tuple]:
-                out.write("    " + key + ": " + repr_right(classifier.settings[key]) + "\n")
+                out.write("    " + key + ": " + repr_right(classifier.settings[key], "{:.8f}") + "\n")
             else:
                 out.write("    " + key + ": " + str(classifier.settings[key]) + "\n")
