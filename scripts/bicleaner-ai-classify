@@ -3,8 +3,8 @@
 import sys
 import traceback
 import logging
-import bicleaner.util as util
-import bicleaner.bicleaner_classifier as classifier
+import bicleaner_ai.bicleaner_ai_classifier as classifier
+import bicleaner_ai.util as util
 
 def main(argv):
     try:

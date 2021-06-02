@@ -15,10 +15,10 @@ import tensorflow.keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
-import decomposable_attention
 import logging
 
 try:
+    from . import decomposable_attention
     from .metrics import FScore, MatthewsCorrCoef
     from .datagen import (
             TupleSentenceGenerator,
@@ -29,6 +29,7 @@ try:
             TokenAndPositionEmbedding,
             BCClassificationHead)
 except (SystemError, ImportError):
+    import decomposable_attention
     from metrics import FScore, MatthewsCorrCoef
     from datagen import (
             TupleSentenceGenerator,
