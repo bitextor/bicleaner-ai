@@ -124,11 +124,11 @@ def initialization():
     args.model_dir.rstrip('/')
 
     # If the model files are basenames, prepend model path
-    if args.lm_file_sl.count('/') == 0:
+    if args.lm_file_sl and args.lm_file_sl.count('/') == 0:
         args.lm_file_sl = args.model_dir + '/' + args.lm_file_sl
-    if args.lm_file_tl.count('/') == 0:
+    if args.lm_file_tl and args.lm_file_tl.count('/') == 0:
         args.lm_file_tl = args.model_dir + '/' + args.lm_file_tl
-    if args.porn_removal_file.count('/') == 0:
+    if args.porn_removal_file and args.porn_removal_file.count('/') == 0:
         args.porn_removal_file = args.model_dir + '/' + args.porn_removal_file
 
     args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
