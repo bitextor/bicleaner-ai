@@ -1,3 +1,16 @@
+Bicleaner AI 1.0:
+* Bicleaner train changes:
+  * Separate most of the training logic in the BaseModel class.
+  * Re-factor synthetic noise build function.
+  * Parallelize synthetic noise generation.
+  * Add fuzzy matching noise and neighbour noise.
+  * Add Decomposable Attention model.
+  * Add Transkformer-like model.
+  * Add XLMRoberta model.
+* Bicleaner classify changes:
+  * Change old classifier by new neural models.
+  * Move hardrules into a separate package.
+
 Bicleaner 0.15:
 * Bicleaner train changes:
   * Qmax bug fixing.
