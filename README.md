@@ -316,7 +316,7 @@ Both `womit_ratio` and `freq_ratio` will use Sacremoses tokenizer by default.
 So, for languages that are not supported by this tokenizer or are poorly supported, `source_tokenizer_command` and/or `target_tokenizer_command` should be provided.
 Also note that, if a tokenizer command is used, the word frequencies need to be tokenized in the same way to allow noise based on frequency work correctly.
 
-If no tokenization is available for your languages, you can disable the noises that use tokenization and use fuzzy mathing noise: `--womit_ratio 0 --freq_ratio 0 --fuzzy_ratio 6`.
+If no tokenization is available for your languages, you can disable these noise option that use tokenization and use fuzzy mathing noise: `--womit_ratio 0 --freq_ratio 0 --fuzzy_ratio 6`.
 
 ___
 
