@@ -18,18 +18,8 @@ try:
 except (ImportError, SystemError):
     from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 
-__author__ = "Sergio Ortiz Rojas"
-__version__ = "Version 0.1 # 28/12/2017 # Initial release # Sergio Ortiz"
-__version__ = "Version 0.8 # 25/05/2018 # Bicleaner + Hardrules integrated # Marta Bañón"
-__version__ = "Version 0.9 # 27/09/2018 # Changed input parameters for feature_extract # Marta Bañón"
-__version__ = "Version 0.9.1 # 03/10/2018 # YAML is mandatory # Marta Bañón"
-__version__ = "Version 0.10.4 # 17/10/2018 # Default block size is now 200 # Marta Bañón"
-__version__ = "Version 0.10.8 # 18/12/2018 # Generalized tokenizer # Leopoldo Pla"
-__version__ = "Version 0.11.0 # 17/01/2019 # Added fluency filter # Víctor M. Sánchez-Cartagena"
-__version__ = "Version 0.12 # 29/08/2019 # # Marta Bañón"
-__version__ = "Version 0.13 # 30/10/2019 # Features version 3  # Marta Bañón"
-__version__ = "Version 0.14 # 04/08/2020 # Features version 4 # Miquel Esplà, Jaume Zaragoza and Marta Bañón"
-__version__ = "Version 0.15 # # # Miquel Esplà, Jaume Zaragoza and Marta Bañón"
+__author__ = "Jaume Zaragoza"
+__version__ = "Version 1.0 # 14/06/2021 #"
 
 
 # Create an argument parser and add all the arguments
