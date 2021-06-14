@@ -14,10 +14,12 @@ from tensorflow.keras import backend as K
 import numpy as np
 
 try:
-    from .metrics import FScore
+    from .losses import KDLoss
+    from .metrics import MatthewsCorrCoef
     from .layers import TokenAndPositionEmbedding
 except (SystemError, ImportError):
-    from metrics import FScore
+    from losses import KDLoss
+    from metrics import MatthewsCorrCoef
     from layers import TokenAndPositionEmbedding
 
 def build_model(vectors, settings):
@@ -92,21 +94,20 @@ def build_model(vectors, settings):
 
     H = create_feedforward(nr_hidden, dropout=settings["dropout"])
     out = H(concat)
-    if settings['loss'] == 'categorical_crossentropy':
+    if settings['distilled']:
         out = layers.Dense(nr_class)(out)
-        out = layers.Activation('softmax', dtype='float32')(out)
+        loss = KDLoss(settings["batch_size"])
     else:
         out = layers.Dense(nr_class)(out)
         out = layers.Activation('sigmoid', dtype='float32')(out)
+        loss = settings["loss"]
 
     model = Model([input1, input2], out)
 
-    model.compile(
-        optimizer=Adam(learning_rate=settings["scheduler"], clipnorm=settings["clipnorm"]),
-        loss=settings["loss"],
-        metrics=[Precision(name='p'), Recall(name='r'), FScore(name='f1')],
-        experimental_run_tf_function=False,
-    )
+    model.compile(optimizer=settings["optimizer"],
+                  loss=loss,
+                  metrics=settings["metrics"](), # Call get_metrics
+                  experimental_run_tf_function=False,)
 
     return model
 
@@ -122,7 +123,11 @@ def create_embedding(vectors, max_length, projected_dim, trainable=False):
             #     trainable=trainable,
             #     mask_zero=True,
             # ),
-            TokenAndPositionEmbedding(vectors, max_length, trainable),
+            TokenAndPositionEmbedding(vectors.shape[0],
+                                      vectors.shape[1],
+                                      max_length,
+                                      vectors,
+                                      trainable),
             layers.TimeDistributed(
                 layers.Dense(projected_dim, activation=None, use_bias=False,
                     kernel_regularizer=None)

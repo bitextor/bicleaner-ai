@@ -8,18 +8,18 @@ with open("requirements.txt") as rf:
     requirements = rf.read().splitlines()
     
 setuptools.setup(
-    name="bicleaner",
-    version="0.15",
+    name="bicleaner-ai",
+    version="1.0",
     install_requires=requirements,
     license="GNU General Public License v3.0",
     author="Prompsit Language Engineering",
     author_email="info@prompsit.com",
-    maintainer="Marta Bañón",
-    maintainer_email="mbanon@prompsit.com",
-    description="Parallel corpus classifier, indicating the likelihood of a pair of sentences being mutual translations or not",
+    maintainer="Jaume Zaragoza",
+    maintainer_email="jzaragoza@prompsit.com",
+    description="Parallel corpus classifier, indicating the likelihood of a pair of sentences being mutual translations or not (neural version)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/bitextor/bicleaner",
+    url="https://github.com/bitextor/bicleaner-ai",
     packages=setuptools.find_packages(),
     classifiers=[
         "Environment :: Console",
@@ -35,12 +35,10 @@ setuptools.setup(
     project_urls={
         "Bicleaner on GitHub": "https://github.com/bitextor/bicleaner",
         "Prompsit Language Engineering": "http://www.prompsit.com",
-        "Bicrawler & Bicleaner": "https://bicrawler.com",
         "Paracrawl": "https://paracrawl.eu/"
-         },
+    },
     scripts=[
-         "scripts/bicleaner-classify",
-         "scripts/bicleaner-train",
-         "scripts/bicleaner-hardrules"
-         ]
+         "scripts/bicleaner-ai-classify",
+         "scripts/bicleaner-ai-train",
+     ]
 )

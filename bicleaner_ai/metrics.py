@@ -14,12 +14,14 @@ class FScore(Metric):
             top_k=None,
             class_id=None,
             name=None,
-            dtype=None):
+            dtype=None,
+            argmax=False):
         super(FScore, self).__init__(name=name, dtype=dtype)
         self.beta = beta
         self.init_thresholds = thresholds
         self.top_k = top_k
         self.class_id = class_id
+        self.argmax = argmax
 
         default_threshold = 0.5 if top_k is None else metrics_utils.NEG_INF
         self.thresholds = metrics_utils.parse_init_thresholds(
@@ -39,6 +41,9 @@ class FScore(Metric):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         '''Accumulates true positive and false positive statistics.'''
+        if self.argmax:
+            y_pred = K.argmax(y_pred)
+
         return metrics_utils.update_confusion_matrix_variables(
                 {
                     metrics_utils.ConfusionMatrix.TRUE_POSITIVES: self.true_positives,
@@ -81,11 +86,13 @@ class MatthewsCorrCoef(Metric):
             top_k=None,
             class_id=None,
             name=None,
-            dtype=None):
+            dtype=None,
+            argmax=False):
         super(MatthewsCorrCoef, self).__init__(name=name, dtype=dtype)
         self.init_thresholds = thresholds
         self.top_k = top_k
         self.class_id = class_id
+        self.argmax = argmax
 
         default_threshold = 0.5 if top_k is None else metrics_utils.NEG_INF
         self.thresholds = metrics_utils.parse_init_thresholds(
@@ -109,6 +116,9 @@ class MatthewsCorrCoef(Metric):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         '''Accumulates true positive and false positive statistics.'''
+        if self.argmax:
+            y_pred = K.argmax(y_pred)
+
         return metrics_utils.update_confusion_matrix_variables(
                 {
                     metrics_utils.ConfusionMatrix.TRUE_POSITIVES: self.true_positives,
@@ -127,7 +137,7 @@ class MatthewsCorrCoef(Metric):
         N = (self.true_negatives + self.true_positives
                 + self.false_negatives + self.false_positives)
         S = (self.true_positives + self.false_negatives) / N
-        P = (self.true_positives + self.false_negatives) / N
+        P = (self.true_positives + self.false_positives) / N
         result = tf.math.divide_no_nan(self.true_positives/N - S*P,
                                        tf.math.sqrt(P * S * (1-S) * (1-P)))
         return result[0] if len(self.thresholds) == 1 else result

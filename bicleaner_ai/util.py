@@ -13,6 +13,11 @@ import random
 from tempfile import TemporaryFile
 from toolwrapper import ToolWrapper
 
+try:
+    from .models import DecomposableAttention, Transformer, BCXLMRoberta
+except (SystemError, ImportError):
+    from models import DecomposableAttention, Transformer, BCXLMRoberta
+
 # variables used by the no_escaping function
 replacements = {"&amp;":  "&",
                 "&#124;": "|",
@@ -28,6 +33,14 @@ nrregexp = re.compile('|'.join(map(re.escape, substrs)))
 
 regex_alpha = regex.compile("^[[:alpha:]]+$")
 
+# Return model class according to its cli alias
+model_classes = {
+    "dec_attention": DecomposableAttention,
+    "transformer": Transformer,
+    "xlmr": BCXLMRoberta,
+}
+def get_model(model_type):
+    return model_classes[model_type]
 
 # Back-replacements of strings mischanged by the Moses tokenizer
 def no_escaping(text):
@@ -93,6 +106,12 @@ def logging_setup(args = None):
     logging_level = logging.getLogger().level
     if logging_level <= logging.WARNING and logging_level != logging.DEBUG:
         logging.getLogger("ToolWrapper").setLevel(logging.WARNING)
+
+    if logging.getLogger().level == logging.INFO:
+        from transformers import logging as hf_logging
+        hf_logging.set_verbosity_error()
+        import tensorflow as tf
+        tf.get_logger().setLevel('ERROR')
 
 def shuffle_file(input: typing.TextIO, output: typing.TextIO):
     offsets=[]
