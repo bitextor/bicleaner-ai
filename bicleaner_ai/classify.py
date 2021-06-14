@@ -47,6 +47,7 @@ def argument_parser():
     groupO.add_argument('--score_only',action='store_true', help="Only output one column which is the bicleaner score", default=False)
     groupO.add_argument('--calibrated',action='store_true', help="Output calibrated scores", default=False)
     groupO.add_argument('--raw_output',action='store_true', help="Return raw output without computing positive class probability.", default=False)
+    groupO.add_argument('--lm_threshold',type=check_positive_between_zero_and_one, default=0.5, help="Threshold for language model fluency scoring. All TUs whose LM fluency score falls below the threshold will are removed (classifier score set to 0), unless the option --keep_lm_result set.")
 
     groupO.add_argument('--disable_hardrules',action = 'store_true', help = "Disables the bicleaner_hardrules filtering (only bicleaner_classify is applied)")
     groupO.add_argument('--disable_lm_filter', action = 'store_true', help = "Disables LM filtering")
