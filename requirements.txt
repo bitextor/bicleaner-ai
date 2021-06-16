@@ -5,7 +5,7 @@ pytest>=5.1.2
 toolwrapper>=0.4.1
 joblib==0.14.1
 sacremoses==0.0.43
-bicleaner-hardrules==1.1
+bicleaner-hardrules==1.2
 sentencepiece==0.1.94
 tensorflow>=2.3.2
 glove-python-binary==0.2.0
