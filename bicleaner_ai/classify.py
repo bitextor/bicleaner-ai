@@ -20,6 +20,7 @@ except (ImportError, SystemError):
 
 __author__ = "Jaume Zaragoza"
 __version__ = "Version 1.0 # 14/06/2021 #"
+__version__ = "Version 1.0.1 # 16/06/2021 #"
 
 
 # Create an argument parser and add all the arguments
