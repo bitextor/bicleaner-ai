@@ -1,3 +1,6 @@
+Bicleaner AI 1.0.1:
+* Update hardrules to 1.2: adds score only mode.
+
 Bicleaner AI 1.0:
 * Bicleaner train changes:
   * Separate most of the training logic in the BaseModel class.
