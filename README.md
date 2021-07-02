@@ -318,6 +318,16 @@ Also note that, if a tokenizer command is used, the word frequencies need to be 
 
 If no tokenization is available for your languages, you can disable these noise option that use tokenization and use fuzzy mathing noise: `--womit_ratio 0 --freq_ratio 0 --fuzzy_ratio 6`.
 
+## Speed
+A comparison of the speed in number of sentences per second between different types of models and hardware:
+
+| model | speed CPUx1 | speed GPUx1 |
+| ----- | ----------- | ----------- |
+| full | 1.78 rows/sec | 200 rows/sec |
+| lite | 600 rows/sec | 10,000 rows/sec |
+
+* CPU: Intel Core i9-9960X single core (lite model batch 16, full model batch 1)
+* GPU: Nvidia V100 (lite model batch 2048, full model batch 16)
 ___
 
 ![Connecting Europe Facility](https://www.paracrawl.eu/images/logo_en_cef273x39.png)
