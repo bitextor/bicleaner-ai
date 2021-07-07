@@ -22,7 +22,7 @@ except (SystemError, ImportError):
     from metrics import MatthewsCorrCoef
     from layers import TokenAndPositionEmbedding
 
-def build_model(vectors, settings):
+def build_model(vectors, settings, compile=True):
     max_length = settings["maxlen"]
     nr_hidden = settings["n_hidden"]
     nr_class = settings["n_classes"]
@@ -31,7 +31,10 @@ def build_model(vectors, settings):
     input2 = layers.Input(shape=(max_length,), dtype="int32", name="words2")
 
     # embeddings (projected)
-    embed = create_embedding(vectors, max_length, nr_hidden, settings["emb_trainable"])
+    embed = create_embedding(vectors, settings["emb_dim"],
+                             settings["vocab_size"],
+                             max_length, nr_hidden,
+                             settings["emb_trainable"])
 
     a = embed(input1)
     b = embed(input2)
@@ -104,15 +107,16 @@ def build_model(vectors, settings):
 
     model = Model([input1, input2], out)
 
-    model.compile(optimizer=settings["optimizer"],
-                  loss=loss,
-                  metrics=settings["metrics"](), # Call get_metrics
-                  experimental_run_tf_function=False,)
+    if compile:
+        model.compile(optimizer=settings["optimizer"],
+                      loss=loss,
+                      metrics=settings["metrics"](), # Call get_metrics
+                      experimental_run_tf_function=False,)
 
     return model
 
 
-def create_embedding(vectors, max_length, projected_dim, trainable=False):
+def create_embedding(vectors, emb_dim, vocab_size, max_length, projected_dim, trainable=False):
     return models.Sequential(
         [
             # layers.Embedding(
@@ -123,8 +127,8 @@ def create_embedding(vectors, max_length, projected_dim, trainable=False):
             #     trainable=trainable,
             #     mask_zero=True,
             # ),
-            TokenAndPositionEmbedding(vectors.shape[0],
-                                      vectors.shape[1],
+            TokenAndPositionEmbedding(vocab_size,
+                                      emb_dim,
                                       max_length,
                                       vectors,
                                       trainable),
