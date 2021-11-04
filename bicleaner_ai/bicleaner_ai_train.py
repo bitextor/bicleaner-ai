@@ -42,7 +42,7 @@ def initialization():
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
     groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=False, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings. Not required for XLMR.")
     groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to train the classifier")
-    groupM.add_argument('--parallel_dev', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences for development")
+    groupM.add_argument('--parallel_valid', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences for validation")
 
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
@@ -53,7 +53,8 @@ def initialization():
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
-    groupO.add_argument('--save_train_data', type=str, default=None, help="Save the generated dataset into a file. If the file already exists the training dataset will be loaded from there.")
+    groupO.add_argument('--save_train', type=str, default=None, help="Save the generated training dataset into a file. If the file already exists the training dataset will be loaded from there.")
+    groupO.add_argument('--save_valid', type=str, default=None, help="Save the generated validation dataset into a file. If the file already exists the validation dataset will be loaded from there.")
     groupO.add_argument('--distilled', action='store_true', help='Enable Knowledge Distillation training. It needs pre-built training set with raw scores from a teacher model.')
     groupO.add_argument('--seed', default=None, type=int, help="Seed for random number generation. By default, no seeed is used.")
 
@@ -161,21 +162,34 @@ def perform_training(args):
         from hardrules.training import train_porn_removal
         train_porn_removal(args)
 
-    if (args.save_train_data is None
-            or not os.path.isfile(args.save_train_data)
-            or os.stat(args.save_train_data).st_size == 0):
+    # If save_train is not provided or empty build new train set
+    # otherwise use the prebuilt training set
+    if (args.save_train is None
+            or not os.path.isfile(args.save_train)
+            or os.stat(args.save_train).st_size == 0):
         logging.info("Building training set")
         train_sentences = build_noise(args.parallel_train, args)
-        if args.save_train_data is not None:
-            shutil.copyfile(train_sentences, args.save_train_data)
+        if args.save_train is not None:
+            shutil.copyfile(train_sentences, args.save_train)
     else:
-        train_sentences = args.save_train_data
+        train_sentences = args.save_train
         logging.info("Using pre-built training set: " + train_sentences)
-    logging.info("Building development set")
-    test_sentences = build_noise(args.parallel_dev, args)
-    dev_sentences = test_sentences
+
+    # Same for valid set
+    if (args.save_valid is None
+            or not os.path.isfile(args.save_valid)
+            or os.stat(args.save_valid).st_size == 0):
+        logging.info("Building validation set")
+        valid_sentences = build_noise(args.parallel_valid, args)
+        if args.save_valid is not None:
+            shutil.copyfile(valid_sentences, args.save_valid)
+    else:
+        valid_sentences = args.save_valid
+        logging.info("Using pre-built validation set: " + valid_sentences)
+    test_sentences = valid_sentences
+
     logging.debug(f"Training sentences file: {train_sentences}")
-    logging.debug(f"Development sentences file: {dev_sentences}")
+    logging.debug(f"Validation sentences file: {valid_sentences}")
 
     # Train LM fluency filter
     if args.lm_file_sl and args.lm_file_tl:
@@ -184,7 +198,7 @@ def perform_training(args):
         args.input = args.parallel_train
         lm_stats = train_fluency_filter(args)
     args.parallel_train.close()
-    args.parallel_dev.close()
+    args.parallel_valid.close()
 
     logging.info("Start training")
 
@@ -207,11 +221,11 @@ def perform_training(args):
         except:
             classifier.train_vocab(args.mono_train, args.processes)
 
-    y_true, y_pred = classifier.train(train_sentences, dev_sentences)
+    y_true, y_pred = classifier.train(train_sentences, valid_sentences)
 
-    if args.save_train_data is not None and train_sentences != args.save_train_data:
+    if args.save_train is not None and train_sentences != args.save_train:
         os.unlink(train_sentences)
-    os.unlink(dev_sentences)
+    os.unlink(valid_sentences)
     logging.info("End training")
 
     write_metadata(args, classifier, y_true, y_pred, lm_stats)
