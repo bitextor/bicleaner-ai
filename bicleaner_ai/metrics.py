@@ -13,7 +13,7 @@ class FScore(Metric):
             thresholds=None,
             top_k=None,
             class_id=None,
-            name=None,
+            name='f1',
             dtype=None,
             argmax=False):
         super(FScore, self).__init__(name=name, dtype=dtype)
@@ -85,7 +85,7 @@ class MatthewsCorrCoef(Metric):
             thresholds=None,
             top_k=None,
             class_id=None,
-            name=None,
+            name='mcc',
             dtype=None,
             argmax=False):
         super(MatthewsCorrCoef, self).__init__(name=name, dtype=dtype)

@@ -193,8 +193,8 @@ class BaseModel(ModelInterface):
             #TODO create argmax precision and recall or use categorical acc
             #Precision(name='p'),
             #Recall(name='r'),
-            FScore(name='f1', argmax=self.settings["distilled"]),
-            MatthewsCorrCoef(name='mcc', argmax=self.settings["distilled"]),
+            FScore(argmax=self.settings["distilled"]),
+            MatthewsCorrCoef(argmax=self.settings["distilled"]),
         ]
 
     def get_generator(self, batch_size, shuffle):
@@ -574,8 +574,8 @@ class BCXLMRoberta(BaseModel):
             self.model.compile(optimizer=self.settings["optimizer"],
                                loss=SparseCategoricalCrossentropy(
                                         from_logits=True),
-                               metrics=[FScore(name='f1',
-                                               argmax=True)])
+                               metrics=[FScore(argmax=True),
+                                        MatthewsCorrCoef(argmax=True)])
         if logging.getLogger().level == logging.DEBUG:
             self.model.summary()
         self.model.fit(train_generator,
