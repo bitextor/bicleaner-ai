@@ -276,30 +276,30 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
     out.write(f"f1_score: {f1:.3f}\n")
     out.write(f"matthews_corr_coef: {mcc:.3f}\n")
 
-
     # Writing it by hand (not using YAML libraries) to preserve the order
     out.write(f"source_lang: {args.source_lang}\n")
     out.write(f"target_lang: {args.target_lang}\n")
 
-    # Save base names only if directories are relative
-    if check_relative_path(args.model_dir, args.porn_removal_file):
-        porn_removal_file = os.path.basename(args.porn_removal_file)
-    else:
-        porn_removal_file = args.porn_removal_file
-    if check_relative_path(args.model_dir, args.lm_file_sl):
-        lm_file_sl = os.path.basename(args.lm_file_sl)
-    else:
-        lm_file_sl = args.lm_file_sl
-    if check_relative_path(args.model_dir, args.lm_file_tl):
-        lm_file_tl = os.path.basename(args.lm_file_tl)
-    else:
-        lm_file_tl = args.lm_file_tl
-
     if args.porn_removal_file is not None and args.porn_removal_train is not None:
+        # Save base names only if directories are relative
+        if check_relative_path(args.model_dir, args.porn_removal_file):
+            porn_removal_file = os.path.basename(args.porn_removal_file)
+        else:
+            porn_removal_file = args.porn_removal_file
         out.write(f"porn_removal_file: {porn_removal_file}\n")
         out.write(f"porn_removal_side: {args.porn_removal_side}\n")
 
     if lm_stats is not None and args.lm_file_sl is not None and args.lm_file_tl is not None:
+        # Save base names only if directories are relative
+        if check_relative_path(args.model_dir, args.lm_file_sl):
+            lm_file_sl = os.path.basename(args.lm_file_sl)
+        else:
+            lm_file_sl = args.lm_file_sl
+        if check_relative_path(args.model_dir, args.lm_file_tl):
+            lm_file_tl = os.path.basename(args.lm_file_tl)
+        else:
+            lm_file_tl = args.lm_file_tl
+
         out.write(f"source_lm: {lm_file_sl}\n")
         out.write(f"target_lm: {lm_file_tl}\n")
         out.write(f"lm_type: CHARACTER\n")

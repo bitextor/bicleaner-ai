@@ -588,20 +588,6 @@ class BCXLMRoberta(BaseModel):
         self.model.save_pretrained(model_filename)
         self.tokenizer.save_pretrained(vocab_filename)
 
-        # predict returns empty output when using multi-gpu
-        # so, reloading model in single gpu is needed for prediction
-        del self.model
-        strategy = tf.distribute.OneDeviceStrategy('/gpu:0')
-        with strategy.scope():
-            self.model = self.load_model(model_filename)
-
-        # Divide the configured batch_size by the number of GPUs
-        # to determine batch_size for single GPU
-        # and reload development set with the new batch_size
-        batch_size = min(1, self.settings["batch_size"]//num_devices)
-        dev_generator.batch_size = batch_size
-        dev_generator.load(dev_set)
-
         y_true = dev_generator.y
         y_pred = self.model.predict(dev_generator, verbose=1).logits
         y_pred_probs = self.softmax_pos_prob(y_pred)
