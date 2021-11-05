@@ -227,6 +227,10 @@ def replace_freq_words(sentence, double_linked_zipf_freqs):
                     alternatives.remove(w.lower())
                 if not alternatives == []:
                     sentence[wordpos] = random.choice(alternatives)
+
+                    # Restore starting capital letter
+                    if wordpos == 0 and w[0].isupper():
+                        sentence[wordpos] = sentence[wordpos].capitalize()
         count += 1
         if sentence != sent_orig:
             break
