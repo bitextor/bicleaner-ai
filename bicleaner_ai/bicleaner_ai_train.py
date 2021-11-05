@@ -197,6 +197,8 @@ def perform_training(args):
         args.parallel_train.seek(0)
         args.input = args.parallel_train
         lm_stats = train_fluency_filter(args)
+    else:
+        lm_stats = None
     args.parallel_train.close()
     args.parallel_valid.close()
 
