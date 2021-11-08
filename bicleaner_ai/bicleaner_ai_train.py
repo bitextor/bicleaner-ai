@@ -202,8 +202,6 @@ def perform_training(args):
     args.parallel_train.close()
     args.parallel_valid.close()
 
-    logging.info("Start training")
-
     model_settings = {
         "batch_size": args.batch_size,
         "epochs": args.epochs,
