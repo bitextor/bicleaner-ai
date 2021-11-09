@@ -69,7 +69,8 @@ def sentence_noise(i, src, trg, args):
     for j in range(args.womit_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         omitted = omit_words(t_toks)
-        sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
+        if omitted != []:
+            sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
 
     # Misalginment by fuzzy matching
     if args.fuzzy_ratio > 0:
@@ -241,7 +242,9 @@ def replace_freq_words(sentence, double_linked_zipf_freqs):
 
 # Randomly omit words in a sentence
 def omit_words(sentence):
-    num_words_deleted = random.randint(1, len(sentence))
+    if len(sentence) <= 1:
+        return []
+    num_words_deleted = random.randint(1, len(sentence)-1)
     idx_words_to_delete = sorted(random.sample(range(len(sentence)), num_words_deleted), reverse=True)
     for wordpos in idx_words_to_delete:
         del sentence[wordpos]
