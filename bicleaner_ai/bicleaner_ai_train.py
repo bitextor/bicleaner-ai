@@ -132,8 +132,6 @@ def initialization():
     if args.porn_removal_file and args.porn_removal_file.count('/') == 0:
         args.porn_removal_file = args.model_dir + '/' + args.porn_removal_file
 
-    args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
-
     # Logging
     logging_setup(args)
     logging_level = logging.getLogger().level
@@ -228,6 +226,7 @@ def perform_training(args):
     os.unlink(valid_sentences)
     logging.info("End training")
 
+    args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
     write_metadata(args, classifier, y_true, y_pred, lm_stats)
     args.metadata.close()
 
