@@ -201,7 +201,7 @@ class BaseModel(ModelInterface):
         ''' Returns a sentence generator instance according to the model input '''
         raise NotImplementedError("Subclass must define its sentence generator")
 
-    def build_model(self):
+    def build_model(self, compile=True):
         '''Returns a compiled Keras model instance'''
         raise NotImplementedError("Subclass must implement its model architecture")
 
@@ -259,8 +259,16 @@ class BaseModel(ModelInterface):
                 'MatthewsCorrCoef': MatthewsCorrCoef,
                 'TokenAndPositionEmbedding': TokenAndPositionEmbedding,
         }
-        self.model = load_model(self.dir+'/'+self.settings["model_file"],
-                                custom_objects=deps, compile=False)
+
+        # Try loading the whole model
+        # If it fails due to bad marshal (saved with different Python version)
+        # build a new model and load weights
+        try:
+            self.model = load_model(self.dir+'/'+self.settings["model_file"],
+                                    custom_objects=deps, compile=False)
+        except ValueError:
+            self.model = self.build_model(compile=False)
+            self.model.load_weights(self.dir+'/'+self.settings["model_file"])
 
     def train_vocab(self, monolingual, threads):
         '''Trains SentencePiece model and embeddings with Glove'''
@@ -377,8 +385,8 @@ class DecomposableAttention(BaseModel):
                     batch_size=batch_size,
                     maxlen=self.settings["maxlen"])
 
-    def build_model(self):
-        return decomposable_attention.build_model(self.wv, self.settings)
+    def build_model(self, compile=True):
+        return decomposable_attention.build_model(self.wv, self.settings, compile)
 
 class Transformer(BaseModel):
     '''Basic Transformer model'''
@@ -418,7 +426,7 @@ class Transformer(BaseModel):
                     maxlen=self.settings["maxlen"],
                     separator=self.settings["separator"])
 
-    def build_model(self):
+    def build_model(self, compile=True):
         settings = self.settings
         inputs = layers.Input(shape=(settings["maxlen"],), dtype='int32')
         embedding = TokenAndPositionEmbedding(self.wv,
@@ -442,9 +450,10 @@ class Transformer(BaseModel):
             outputs = layers.Dense(settings["n_classes"], activation='sigmoid')(x)
 
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
-        model.compile(optimizer=settings["optimizer"],
-                      loss=settings["loss"],
-                      metrics=settings["metrics"]())
+        if compile:
+            model.compile(optimizer=settings["optimizer"],
+                          loss=settings["loss"],
+                          metrics=settings["metrics"]())
         return model
 
 
