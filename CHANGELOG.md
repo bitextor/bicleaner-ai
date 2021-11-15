@@ -1,5 +1,9 @@
 Unreleased:
+* Update HF Transformers, no longer needed single GPU for prediction.
+* Avoid generating empty sentences in omit noise.
+* Restore capital letters at the beggining of the sentennce in frequency noise.
 * Fix loading lite models in other other Python versions than 3.8.
+* Other minor fixes.
 
 Bicleaner AI 1.0.1:
 * Update hardrules to 1.2: adds score only mode.
