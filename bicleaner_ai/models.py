@@ -9,12 +9,13 @@ from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 from tensorflow.keras import layers
-from glove import Corpus, Glove
+from gensim.models import Word2Vec, KeyedVectors
 from abc import ABC, abstractmethod
 import tensorflow.keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
+import gensim
 import logging
 
 try:
@@ -147,7 +148,7 @@ class BaseModel(ModelInterface):
             "spm_file": self.spm_prefix + ".model",
             "vocab_file": self.spm_prefix + ".vocab",
             "model_file": "model.h5",
-            "wv_file": "glove.vectors",
+            "wv_file": "gensim.vectors",
             "separator": None,
             "bos_id": -1,
             "eos_id": -1,
@@ -158,7 +159,7 @@ class BaseModel(ModelInterface):
             "sampling": False,
             "emb_dim": 300,
             "emb_trainable": True,
-            "emb_epochs": 10,
+            "emb_epochs": 5,
             "window": 15,
             "vocab_size": 32000,
             "batch_size": 1024,
@@ -247,8 +248,9 @@ class BaseModel(ModelInterface):
 
     def load_embed(self):
         '''Loads embeddings from model directory'''
-        glove = Glove().load(self.dir+'/'+self.settings["wv_file"])
-        self.wv = glove.word_vectors
+        word2vec = KeyedVectors.load_word2vec_format(
+                    self.dir+'/'+self.settings["wv_file"])
+        self.wv = word2vec.wv
         logging.info("Loaded SentenePiece Glove vectors")
 
     def load(self):
@@ -272,41 +274,63 @@ class BaseModel(ModelInterface):
 
     def train_vocab(self, monolingual, threads):
         '''Trains SentencePiece model and embeddings with Glove'''
+        settings = self.settings
 
         logging.info("Training SentencePiece joint vocabulary")
         trainer = sp.SentencePieceTrainer
         trainer.train(sentence_iterator=monolingual,
                       model_prefix=self.dir+'/'+self.spm_prefix,
-                      vocab_size=self.settings["vocab_size"],
+                      vocab_size=settings["vocab_size"],
                       input_sentence_size=5000000,
                       shuffle_input_sentence=True,
-                      pad_id=self.settings["pad_id"],
-                      unk_id=self.settings["unk_id"],
-                      bos_id=self.settings["bos_id"],
-                      eos_id=self.settings["eos_id"],
-                      user_defined_symbols=self.settings["separator"],
+                      pad_id=settings["pad_id"],
+                      unk_id=settings["unk_id"],
+                      bos_id=settings["bos_id"],
+                      eos_id=settings["eos_id"],
+                      user_defined_symbols=settings["separator"],
                       num_threads=threads,
                       minloglevel=1)
         monolingual.seek(0)
         self.load_spm()
 
-        logging.info("Computing co-occurence matrix")
-        # Iterator function that reads and tokenizes file
-        # to avoid reading the whole input into memory
-        def get_data(input_file):
-            for line in input_file:
-                yield self.spm.encode(line.rstrip(), out_type=str)
-        corpus = Corpus(self.vocab) # Use spm vocab as glove vocab
-        corpus.fit(get_data(monolingual), window=self.settings["window"],
-                   ignore_missing=True)
+        # Create Word2Vec trainer
+        embeddings = Word2Vec(min_count=0,
+                              window=settings["window"],
+                              vector_size=settings["emb_dim"],
+                              workers=threads)
 
+        # Load vocab with fake frequencies
+        # (needed for word2vec sorted exactly as sentencepiece model)
+        word_freq = {}
+        with open(self.dir + '/' + settings["vocab_file"]) as vocab_file:
+            for i, line in enumerate(vocab_file):
+                token = line.split('\t')[0]
+                word_freq[token] = settings["vocab_size"] - i
+        embeddings.build_vocab_from_freq(word_freq, keep_raw_vocab=True)
+
+        # Count number of input monolingual sentences for word2vec training
+        logging.info("Counting lines in monolingual file")
+        num_lines = sum(1 for line in monolingual)
+        monolingual.seek(0)
+
+        # Iterator class that reads and tokenizes file
+        # to avoid reading the whole input into memory
+        class FileIterSP(object):
+            def __init__(self, file_, encoder):
+                self.file_ = file_
+                self.encoder = encoder
+            def __iter__(self):
+                for line in self.file_:
+                    yield self.encoder.encode(line.rstrip("\n"), out_type=str)
+                self.file_.seek(0)
+        file_iterator = FileIterSP(monolingual, self.spm)
         logging.info("Training vocabulary embeddings")
-        embeddings = Glove(no_components=self.settings["emb_dim"])
-        embeddings.fit(corpus.matrix,
-                       epochs=self.settings["emb_epochs"],
-                       no_threads=threads)
-        self.wv = embeddings.word_vectors
-        embeddings.save(self.dir + '/' + self.settings["wv_file"])
+        embeddings.train(corpus_iterable=file_iterator,
+                         epochs=settings["emb_epochs"],
+                         total_examples=num_lines)
+        self.wv = embeddings.wv.vectors
+        embeddings.wv.save_word2vec_format(self.dir + '/' + settings["wv_file"],
+                                           binary=False)
 
     def train(self, train_set, dev_set):
         '''Trains the neural classifier'''
