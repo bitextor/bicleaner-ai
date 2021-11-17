@@ -113,6 +113,12 @@ def logging_setup(args = None):
         import tensorflow as tf
         tf.get_logger().setLevel('ERROR')
 
+        import gensim
+        gensim.models.word2vec.logger.level = logging.WARNING
+        gensim.models.keyedvectors.logger.level = logging.WARNING
+        gensim.utils.logger.level = logging.WARNING
+
+
 def shuffle_file(input: typing.TextIO, output: typing.TextIO):
     offsets=[]
     with TemporaryFile("w+") as temp:
