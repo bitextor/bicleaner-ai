@@ -1,4 +1,5 @@
 Unreleased:
+* Hide Tensorflow and Transformers logging messages in executable scripts.
 * Update HF Transformers, no longer needed single GPU for prediction.
 * Avoid generating empty sentences in omit noise.
 * Restore capital letters at the beggining of the sentennce in frequency noise.
