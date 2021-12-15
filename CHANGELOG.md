@@ -1,4 +1,5 @@
 Unreleased:
+* Huge memory improvements during training.
 * Hide Tensorflow and Transformers logging messages in executable scripts.
 * Update HF Transformers, no longer needed single GPU for prediction.
 * Avoid generating empty sentences in omit noise.
