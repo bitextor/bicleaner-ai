@@ -1,4 +1,4 @@
-from hardrules.hardrules import wrong_tu
+from hardrules.hardrules import Hardrules
 from multiprocessing import cpu_count
 from tempfile import gettempdir
 import tensorflow as tf
@@ -54,6 +54,8 @@ def argument_parser():
     groupO.add_argument('--disable_lm_filter', action = 'store_true', help = "Disables LM filtering")
     groupO.add_argument('--disable_porn_removal', default=False, action='store_true', help="Don't apply porn removal")
     groupO.add_argument('--disable_minimal_length', default=False, action='store_true', help="Don't apply minimal length rule")
+    groupO.add_argument('--run_all_rules', default=False, action='store_true', help="Run all rules of Hardrules instead of stopping at first discard")
+    groupO.add_argument('--rules_config', type=argparse.FileType('r'), default=None, help="Hardrules configuration file")
 
     # Logging group
     groupL = parser.add_argument_group('Logging')
@@ -141,12 +143,13 @@ def load_metadata(args, parser):
 
 # Classify sentences from input and place them at output
 # that can be either files or stdin/stdout
-def classify(args, input, output, lm_filter, porn_tokenizer):
+def classify(args, input, output):
     nline = 0
     buf_sent = []
     buf_sent_sl = []
     buf_sent_tl = []
     buf_score = []
+    hardrules = Hardrules(args)
 
     # Read from input file/stdin
     for line in input:
@@ -166,7 +169,8 @@ def classify(args, input, output, lm_filter, porn_tokenizer):
 
         # Buffer sentences that are not empty and pass hardrules
         # buffer all sentences in raw mode
-        if args.raw_output or (sl_sentence and tl_sentence and (args.disable_hardrules or wrong_tu(sl_sentence, tl_sentence, args, lm_filter, args.porn_removal, porn_tokenizer)== False)):
+        if args.raw_output or (sl_sentence and tl_sentence \
+                and (args.disable_hardrules or hardrules.wrong_tu(sl_sentence, tl_sentence) == False)):
             buf_score.append(1)
             buf_sent_sl.append(sl_sentence)
             buf_sent_tl.append(tl_sentence)

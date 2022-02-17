@@ -45,26 +45,11 @@ def initialization():
 
 # Filtering input texts
 def perform_classification(args):
-    if not args.disable_hardrules and not args.disable_lm_filter:
-        # Don't force lm modules to be loaded when lm_filter is disabled
-        from hardrules.bicleaner_hardrules import load_lm_filter
-        lm_filter = load_lm_filter(args.source_lang, args.target_lang, args.metadata_yaml, args.source_tokenizer_command, args.target_tokenizer_command)
-    else:
-        lm_filter = None
-
-    if not args.disable_hardrules and not args.disable_porn_removal:
-        if args.metadata_yaml['porn_removal_side'] == 'tl':
-            porn_tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
-        else:
-            porn_tokenizer = Tokenizer(args.source_tokenizer_command, args.source_lang)
-    else:
-        porn_tokenizer = None
-
     time_start = default_timer()
     logging.info("Starting process")
 
     # Score sentences
-    nline = classify(args, args.input, args.output, lm_filter, porn_tokenizer)
+    nline = classify(args, args.input, args.output)
 
     # Stats
     logging.info("Finished")
