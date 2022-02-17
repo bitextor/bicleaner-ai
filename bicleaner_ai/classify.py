@@ -25,6 +25,7 @@ __version__ = "Version 1.0.1 # 16/06/2021 #"
 
 # Create an argument parser and add all the arguments
 def argument_parser():
+    header = "--header" in sys.argv
     parser = argparse.ArgumentParser(prog=os.path.basename(sys.argv[0]), formatter_class=argparse.ArgumentDefaultsHelpFormatter, description=__doc__)
     # Mandatory parameters
     ## Input file. Try to open it to check if it exists
@@ -37,8 +38,9 @@ def argument_parser():
     groupO.add_argument("-S", "--source_tokenizer_command", type=str, help="Source language (SL) tokenizer full command")
     groupO.add_argument("-T", "--target_tokenizer_command", type=str, help="Target language (TL) tokenizer full command")
 
-    groupO.add_argument("--scol", default=3, type=check_positive, help ="Source sentence column (starting in 1)")
-    groupO.add_argument("--tcol", default=4, type=check_positive, help ="Target sentence column (starting in 1)")
+    groupO.add_argument("--header", action='store_true', help ="Input file will be expected to have a header, and the output will have a header as well")
+    groupO.add_argument("--scol", default=3 if not header else "src_text", type=check_positive if not header else str, help ="Source sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
+    groupO.add_argument("--tcol", default=4 if not header else "trg_text", type=check_positive if not header else str, help ="Target sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
     groupO.add_argument('-b', '--block_size', type=int, default=1000, help="Sentence pairs per block")
     groupO.add_argument('-p', '--processes', type=int, default=max(1, cpu_count()-1), help="Number of processes to use")
     groupO.add_argument('--batch_size', type=int, default=32, help="Sentence pairs per block")
@@ -150,6 +152,30 @@ def classify(args, input, output):
     buf_sent_tl = []
     buf_score = []
     hardrules = Hardrules(args)
+
+    # Process input and output headers
+    if args.header:
+        args.header = False # We only need to execute the following code once
+        header = next(input).strip().split("\t")
+
+        # Transform fields to idxs
+        if args.scol not in header:
+            raise Exception(f"The provided --scol '{args.scol}' is not in the input header")
+        if args.tcol not in header:
+            raise Exception(f"The provided --tcol '{args.tcol}' is not in the input header")
+
+        args.scol = int(header.index(args.scol)) + 1
+        args.tcol = int(header.index(args.tcol)) + 1
+
+        output_header = header
+
+        if args.score_only:
+            output_header = ["bicleaner_ai_score"]
+        else:
+            output_header.append("bicleaner_ai_score")
+
+        # Write the output header once
+        output.write('\t'.join(output_header) + '\n')
 
     # Read from input file/stdin
     for line in input:

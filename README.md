@@ -92,6 +92,7 @@ This tool can be run with
 bicleaner-ai-classify [-h]
     [-S SOURCE_TOKENIZER_COMMAND]
     [-T TARGET_TOKENIZER_COMMAND]
+    [--header]
     [--scol SCOL]
     [--tcol TCOL]
     [-b BLOCK_SIZE]
@@ -129,8 +130,8 @@ bicleaner-ai-classify [-h]
 * Optional:
   * `-S SOURCE_TOKENIZER_COMMAND`: Source language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
   * `-T TARGET_TOKENIZER_COMMAND`: Target language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
-  * `--scol SCOL`: Source sentence column (starting in 1) (default: 3)
-  * `--tcol TCOL`: Target sentence column (starting in 1) (default: 4)
+  * `--scol SCOL`: Source sentence column (starting in 1). If `--header` is set, the expected value will be the name of the field (default: 3 if `--header` is not set else src_text)
+  * `--tcol TCOL`: Target sentence column (starting in 1). If `--header` is set, the expected value will be the name of the field (default: 4 if `--header` is not set else trg_text)
   * `--tmp_dir TMP_DIR`: Temporary directory where creating the temporary files of this program (default: default system temp dir, defined by the environment variable TMPDIR in Unix)
   * `-b BLOCK_SIZE, --block_size BLOCK_SIZE`: Sentence pairs per block (default: 10000)
   * `-p PROCESSES, --processes PROCESSES`: Number of processes to use (default: all CPUs minus one)
