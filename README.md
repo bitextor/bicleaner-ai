@@ -38,6 +38,19 @@ cmake .. -DKENLM_MAX_ORDER=7 -DCMAKE_INSTALL_PREFIX:PATH=/your/prefix/path
 make -j all install
 ```
 
+Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `python-dev` and `libhunspell-dev`:
+```bash
+sudo apt install python-dev libhunspell-dev
+```
+
+Also note that Hunspell language packages must be installed by hand if you are going to work with one of languages listed as [similar](https://github.com/mbanon/fastspell/blob/main/fastspell/config/similar.yaml), i.e.:
+```
+sudo apt-get install hunspell-es
+```
+or downloaded from an external source, such as https://github.com/wooorm/dictionaries/tree/main/dictionaries
+
+You can also provide the path to the Hunspell dictionaries directories by using the dictpath atribute in `{/YOUR/INSTALLATION/PATH}/config/hunspell.yaml` (for example, `venv/lib/python3.7/site-packages/fastspell/config/hunspell.yaml` ) if you are installing from PyPI or with `setup.py`, or in `/config/hunspell.yaml` if you are running directly the code. Default path is `/usr/share/hunspell`.
+
 The remaining extra modules required by Bicleaner AI will be automatically downloaded and installed/upgraded (if required) with the first command.
 
 After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-classify` and `bicleaner-ai-classify-lite`) will be located in your `python/installation/prefix/bin` directory. This is usually `$HOME/.local/bin` or `/usr/local/bin/`.
@@ -79,6 +92,7 @@ This tool can be run with
 bicleaner-ai-classify [-h]
     [-S SOURCE_TOKENIZER_COMMAND]
     [-T TARGET_TOKENIZER_COMMAND]
+    [--header]
     [--scol SCOL]
     [--tcol TCOL]
     [-b BLOCK_SIZE]
@@ -116,8 +130,8 @@ bicleaner-ai-classify [-h]
 * Optional:
   * `-S SOURCE_TOKENIZER_COMMAND`: Source language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
   * `-T TARGET_TOKENIZER_COMMAND`: Target language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
-  * `--scol SCOL`: Source sentence column (starting in 1) (default: 3)
-  * `--tcol TCOL`: Target sentence column (starting in 1) (default: 4)
+  * `--scol SCOL`: Source sentence column (starting in 1). If `--header` is set, the expected value will be the name of the field (default: 3 if `--header` is not set else src_text)
+  * `--tcol TCOL`: Target sentence column (starting in 1). If `--header` is set, the expected value will be the name of the field (default: 4 if `--header` is not set else trg_text)
   * `--tmp_dir TMP_DIR`: Temporary directory where creating the temporary files of this program (default: default system temp dir, defined by the environment variable TMPDIR in Unix)
   * `-b BLOCK_SIZE, --block_size BLOCK_SIZE`: Sentence pairs per block (default: 10000)
   * `-p PROCESSES, --processes PROCESSES`: Number of processes to use (default: all CPUs minus one)

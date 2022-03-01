@@ -1,4 +1,11 @@
 Unreleased:
+* Update to Hardrules 2.0
+    * Rules can be parametrized with `--rules_config config.yaml`
+    * Some rules have been refactored with better names.
+    * `--run_all_rules` mode to run each rule instead of stoppping at first discard
+    * Language identification with [FastSpell](https://github.com/mbanon/fastspell)
+* Huge memory improvements during training.
+* Hide Tensorflow and Transformers logging messages in executable scripts.
 * Update HF Transformers, no longer needed single GPU for prediction.
 * Avoid generating empty sentences in omit noise.
 * Restore capital letters at the beggining of the sentennce in frequency noise.

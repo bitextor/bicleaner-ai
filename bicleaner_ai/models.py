@@ -339,7 +339,7 @@ class BaseModel(ModelInterface):
             raise Exception("Vocabulary is not trained")
         settings = self.settings
 
-        logging.info("Vectorizing training set")
+        logging.info("Loading training set")
         train_generator = self.get_generator(
                                 settings["batch_size"],
                                 shuffle=True)
@@ -577,7 +577,7 @@ class BCXLMRoberta(BaseModel):
         pass
 
     def train(self, train_set, dev_set):
-        logging.info("Vectorizing training set")
+        logging.info("Loading training set")
 
         self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(
                                                     self.settings["model"])
