@@ -73,6 +73,7 @@ def calibrate_output(y_true, y_pred):
     # dense with single neuron and bias A*x + B
     with tf.device("/cpu:0"):
         model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(1,)),
             tf.keras.layers.Dense(1, activation='sigmoid'),
         ])
     loss = BinaryCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
