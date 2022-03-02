@@ -149,7 +149,7 @@ class BaseModel(ModelInterface):
             "vocab_file": self.spm_prefix + ".vocab",
             "model_file": "model.h5",
             "wv_file": "glove.vectors",
-            "separator": None,
+            "separator": '',
             "bos_id": -1,
             "eos_id": -1,
             "pad_id": 0,
