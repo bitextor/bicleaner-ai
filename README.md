@@ -53,7 +53,7 @@ You can also provide the path to the Hunspell dictionaries directories by using 
 
 The remaining extra modules required by Bicleaner AI will be automatically downloaded and installed/upgraded (if required) with the first command.
 
-After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-classify` and `bicleaner-ai-classify-lite`) will be located in your `python/installation/prefix/bin` directory. This is usually `$HOME/.local/bin` or `/usr/local/bin/`.
+After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-classify`) will be located in your `python/installation/prefix/bin` directory. This is usually `$HOME/.local/bin` or `/usr/local/bin/`.
 
 ### TensorFlow
 TensorFlow 2 will be installed as a dependency and [GPU support](https://www.tensorflow.org/install/gpu) is required for training.
