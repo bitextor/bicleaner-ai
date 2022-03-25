@@ -261,6 +261,7 @@ class BaseModel(ModelInterface):
         deps = {'FScore': FScore,
                 'MatthewsCorrCoef': MatthewsCorrCoef,
                 'TokenAndPositionEmbedding': TokenAndPositionEmbedding,
+                'K': tf.keras.backend,
         }
 
         # Try loading the whole model
