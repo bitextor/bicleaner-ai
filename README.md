@@ -53,6 +53,11 @@ You can also provide the path to the Hunspell dictionaries directories by using 
 
 The remaining extra modules required by Bicleaner AI will be automatically downloaded and installed/upgraded (if required) with the first command.
 
+Also, you can install the conda package:
+```
+conda install -c conda-forge -c bitextor bicleaner-ai
+```
+
 After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-classify`) will be located in your `python/installation/prefix/bin` directory. This is usually `$HOME/.local/bin` or `/usr/local/bin/`.
 
 ### TensorFlow
