@@ -23,14 +23,6 @@ requirements:
     - kenlm
     - fastspell
 
-test:
-  source_files:
-    - tests/*
-  requires:
-    - pytest
-  commands:
-    - pushd tests; pytest; popd
-
 about:
   home: https://github.com/bitextor/bicleaner-ai
   license: GPL3
