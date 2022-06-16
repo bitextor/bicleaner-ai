@@ -7,7 +7,7 @@ joblib
 sacremoses
 bicleaner-hardrules>=2.1
 sentencepiece
-tensorflow==2.3.2
+tensorflow>=2.3.2
 glove-python-binary==0.2.0
 fuzzywuzzy
 python-Levenshtein
