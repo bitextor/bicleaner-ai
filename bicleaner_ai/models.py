@@ -115,7 +115,8 @@ class ModelInterface(ABC):
         pass
 
     @abstractmethod
-    def predict(self, x1, x2, batch_size=None, calibrated=False):
+    def predict(self, x1, x2, batch_size=None, calibrated=False,
+                raw=False, verbose=0):
         pass
 
     @abstractmethod
@@ -206,14 +207,15 @@ class BaseModel(ModelInterface):
         '''Returns a compiled Keras model instance'''
         raise NotImplementedError("Subclass must implement its model architecture")
 
-    def predict(self, x1, x2, batch_size=None, calibrated=False, raw=False):
+    def predict(self, x1, x2, batch_size=None, calibrated=False,
+                raw=False, verbose=0):
         '''Predicts from sequence generator'''
         if batch_size is None:
             batch_size = self.settings["batch_size"]
         generator = self.get_generator(batch_size, shuffle=False)
         generator.load((x1, x2, None))
 
-        y_pred = self.model.predict(generator)
+        y_pred = self.model.predict(generator, verbose=verbose)
         # Obtain logits if model returns HF output
         if isinstance(y_pred, TFSequenceClassifierOutput):
             y_pred = y_pred.logits
