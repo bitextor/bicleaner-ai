@@ -510,7 +510,7 @@ class BCXLMRoberta(BaseModel):
     def load_model(self, model_file):
         settings = self.settings
 
-        tf_model = BCXLMRobertaForSequenceClassification.from_pretrained(
+        tf_model = TFXLMRBicleaner.from_pretrained(
                         model_file,
                         num_labels=settings["n_classes"],
                         head_hidden_size=settings["n_hidden"],
@@ -615,7 +615,7 @@ class BCXLMRoberta(BaseModel):
 
         return y_true, y_pred
 
-class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassification):
+class TFXLMRBicleaner(TFXLMRobertaForSequenceClassification):
     """Model for sentence-level classification tasks."""
 
     def __init__(self, config, head_hidden_size, head_dropout, head_activation):
