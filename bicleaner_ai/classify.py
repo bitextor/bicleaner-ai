@@ -42,7 +42,7 @@ def argument_parser():
     groupO.add_argument("--scol", default=3 if not header else "src_text", type=check_positive if not header else str, help ="Source sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
     groupO.add_argument("--tcol", default=4 if not header else "trg_text", type=check_positive if not header else str, help ="Target sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
     groupO.add_argument('-b', '--block_size', type=int, default=1000, help="Sentence pairs per block")
-    groupO.add_argument('-p', '--processes', type=int, default=max(1, cpu_count()-1), help="Number of processes to use")
+    groupO.add_argument('-p', '--processes', type=int, default=0, help="Number of processes to use")
     groupO.add_argument('--batch_size', type=int, default=32, help="Sentence pairs per block")
 
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
