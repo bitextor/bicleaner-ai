@@ -20,6 +20,9 @@ Full models use fine-tuned XLMRoberta ([Unsupervised Cross-lingual Representatio
 The use of XLMRoberta and 1:10 positive to negative ratio were inspired in the winner of WMT20 Parallel Corpus Filtering Task paper ([Filtering noisy parallel corpus using transformers with proxy task learning](https://www.statmt.org/wmt20/pdf/2020.wmt-1.105.pdf)).
 
 ## Installation & Requirements
+- Python >= 3.7
+- TensorFlow >= 2.6.5
+- CUDA 11.2 (for training and inference with full models)
 
 Bicleaner AI is written in Python and can be installed using `pip`:
 
@@ -57,11 +60,12 @@ After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-clas
 
 ### TensorFlow
 TensorFlow 2 will be installed as a dependency and [GPU support](https://www.tensorflow.org/install/gpu) is required for training.
-`pip` will install latest TensorFlow but older versions `>=2.3.2` are supported and can be installed if your machine does not meet TensorFlow CUDA requirements.
+`pip` will install latest TensorFlow but older versions `>=2.6.5` are supported and can be installed if your machine does not meet TensorFlow CUDA requirements.
 See [this](https://www.tensorflow.org/install/source#gpu) table for the CUDA and TensorFlow versions compatibility.
+But current allowed versions only supoport **CUDA 11.2**.
 In case you want a different TensorFlow version, you can downgrade using:
 ```bash
-pip install tensorflow==2.3.2
+pip install tensorflow==2.6.5
 ```
 
 TensorFlow logging messages are suppressed by default, in case you want to see them you have to explicitly set `TF_CPP_MIN_LOG_LEVEL` environment variable.
