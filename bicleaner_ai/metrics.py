@@ -64,7 +64,7 @@ class FScore(Metric):
         result = tf.math.divide_no_nan(q, d)
         return result[0] if len(self.thresholds) == 1 else result
 
-    def reset_states(self):
+    def reset_state(self):
         num_thresholds = len(to_list(self.thresholds))
         K.batch_set_value(
             [(v, np.zeros((num_thresholds,))) for v in self.variables])
@@ -142,7 +142,7 @@ class MatthewsCorrCoef(Metric):
                                        tf.math.sqrt(P * S * (1-S) * (1-P)))
         return result[0] if len(self.thresholds) == 1 else result
 
-    def reset_states(self):
+    def reset_state(self):
         num_thresholds = len(to_list(self.thresholds))
         K.batch_set_value(
             [(v, np.zeros((num_thresholds,))) for v in self.variables])
