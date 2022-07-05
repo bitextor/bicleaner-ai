@@ -11,5 +11,5 @@ tensorflow>=2.6.5
 glove-python-binary==0.2.0
 fuzzywuzzy
 python-Levenshtein
-transformers==4.10.3
+transformers>=4.10.3,<5.0.0
 psutil
