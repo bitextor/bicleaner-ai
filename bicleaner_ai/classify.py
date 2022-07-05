@@ -224,12 +224,17 @@ def classify(args, input, output):
 
 # Score a batch of sentences
 def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
+    if logging.getLogger().level <= logging.DEBUG:
+        verbose = 1
+    else:
+        verbose = 0
     # Classify predictions
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
         predictions = args.clf.predict(buf_sent_sl, buf_sent_tl,
                                        args.batch_size,
                                        args.calibrated,
-                                       args.raw_output)
+                                       args.raw_output,
+                                       verbose=verbose)
     else:
         predictions = []
     p = iter(predictions)
