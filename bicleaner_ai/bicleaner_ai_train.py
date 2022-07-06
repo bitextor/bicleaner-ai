@@ -47,7 +47,7 @@ def initialization():
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
-    #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
+    groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
     groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
     groupO.add_argument('--block_size', type=check_positive, default=10000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
@@ -70,6 +70,7 @@ def initialization():
     groupO.add_argument('--rand_ratio', default=3, type=int, help="Ratio of negative samples misaligned randomly")
     groupO.add_argument('--womit_ratio', default=3, type=int, help="Ratio of negative samples misaligned by randomly omitting words")
     groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence (needs --target_word_freq)")
+    groupO.add_argument('--cut_ratio', default=0, type=int, help="Ratio of negative samples misaligned by cutting the sentence in a random point")
     groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
     groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
 
@@ -97,7 +98,7 @@ def initialization():
 
     args = parser.parse_args()
 
-    if args.freq_ratio > 0 and args.target_word_freqs is None:
+    if args.freq_ratio > 0 and (args.target_word_freqs is None or args.source_word_freqs):
         raise Exception("Frequence based noise needs target language word frequencies")
     if args.mono_train is None and args.classifier_type != 'xlmr':
         raise Exception("Argument --mono_train not found, required when not training XLMR classifier")

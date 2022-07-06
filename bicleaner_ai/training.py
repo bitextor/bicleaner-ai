@@ -72,6 +72,14 @@ def sentence_noise(i, src, trg, args):
         if omitted != []:
             sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
 
+    # Cut sentences, a.k.a. segmentation noise
+    for j in range(args.cut_ratio):
+        t_toks = tokenizer.tokenize(trg[i])
+        if len(t_toks) <= 2:
+            break
+        cut = cut_sent(t_toks)
+        sts.append(src_strip + "\t" + tokenizer.detokenize(cut) + "\t0")
+
     # Misalginment by fuzzy matching
     if args.fuzzy_ratio > 0:
         explored = {n:trg[n] for n in random.sample(range(size), min(3000, size))}
@@ -249,6 +257,14 @@ def omit_words(sentence):
     for wordpos in idx_words_to_delete:
         del sentence[wordpos]
     return sentence
+
+# Cut a sentence by a random point
+def cut_sent(sentence):
+    cut_point = random.randint(1, len(sentence)-1)
+    if random.getrandbits(1):
+        return sentence[:cut_point]
+    else:
+        return sentence[cut_point:]
 
 def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
     result_str = ["["]
