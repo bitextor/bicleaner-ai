@@ -14,9 +14,9 @@ Visit our [Wiki](https://github.com/bitextor/bicleaner-ai/wiki/How-to-train-your
 ## Citation
 If you find Bicleaner AI useful, please consider citing the following paper:
 
-> J. Zaragoza-Bernabeu, M. Bañón, G. Ramírez-Sánchez, S. Ortiz-Rojas,\
-> "Bicleaner AI: Bicleaner Goes Neural](http://www.lrec-conf.org/proceedings/lrec2022/pdf/2022.lrec-1.87.pdf)",\
-> in *Proceedings of the 13th Language Resources and Evaluation Conference*.\
+> J. Zaragoza-Bernabeu, M. Bañón, G. Ramírez-Sánchez, S. Ortiz-Rojas, \
+> "Bicleaner AI: Bicleaner Goes Neural](http://www.lrec-conf.org/proceedings/lrec2022/pdf/2022.lrec-1.87.pdf)", \
+> in *Proceedings of the 13th Language Resources and Evaluation Conference*. \
 > Marseille, France: Language Resources and Evaluation Conference, June 2022
 
 ```latex
