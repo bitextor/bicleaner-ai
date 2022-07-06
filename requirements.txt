@@ -5,11 +5,11 @@ pytest
 toolwrapper
 joblib
 sacremoses
-bicleaner-hardrules>=2.0
+bicleaner-hardrules>=2.1
 sentencepiece
-tensorflow>=2.3.2
+tensorflow>=2.6.5
 fuzzywuzzy
 python-Levenshtein
-transformers==4.10.3
+transformers>=4.10.3,<5.0.0
 psutil
 gensim>=4

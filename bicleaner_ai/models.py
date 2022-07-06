@@ -116,7 +116,8 @@ class ModelInterface(ABC):
         pass
 
     @abstractmethod
-    def predict(self, x1, x2, batch_size=None, calibrated=False):
+    def predict(self, x1, x2, batch_size=None, calibrated=False,
+                raw=False, verbose=0):
         pass
 
     @abstractmethod
@@ -207,14 +208,15 @@ class BaseModel(ModelInterface):
         '''Returns a compiled Keras model instance'''
         raise NotImplementedError("Subclass must implement its model architecture")
 
-    def predict(self, x1, x2, batch_size=None, calibrated=False, raw=False):
+    def predict(self, x1, x2, batch_size=None, calibrated=False,
+                raw=False, verbose=0):
         '''Predicts from sequence generator'''
         if batch_size is None:
             batch_size = self.settings["batch_size"]
         generator = self.get_generator(batch_size, shuffle=False)
         generator.load((x1, x2, None))
 
-        y_pred = self.model.predict(generator)
+        y_pred = self.model.predict(generator, verbose=verbose)
         # Obtain logits if model returns HF output
         if isinstance(y_pred, TFSequenceClassifierOutput):
             y_pred = y_pred.logits
@@ -532,7 +534,7 @@ class BCXLMRoberta(BaseModel):
     def load_model(self, model_file):
         settings = self.settings
 
-        tf_model = BCXLMRobertaForSequenceClassification.from_pretrained(
+        tf_model = TFXLMRBicleaner.from_pretrained(
                         model_file,
                         num_labels=settings["n_classes"],
                         head_hidden_size=settings["n_hidden"],
@@ -637,7 +639,7 @@ class BCXLMRoberta(BaseModel):
 
         return y_true, y_pred
 
-class BCXLMRobertaForSequenceClassification(TFXLMRobertaForSequenceClassification):
+class TFXLMRBicleaner(TFXLMRobertaForSequenceClassification):
     """Model for sentence-level classification tasks."""
 
     def __init__(self, config, head_hidden_size, head_dropout, head_activation):
