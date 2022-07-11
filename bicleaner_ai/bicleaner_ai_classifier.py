@@ -3,6 +3,12 @@ import os
 # Suppress Tenssorflow logging messages unless log level is explictly set
 if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+# Set Tensorflow max threads before initialization
+if 'BICLEANER_AI_THREADS' in os.environ:
+    threads = int(os.environ["BICLEANER_AI_THREADS"])
+    import tensorflow as tf
+    tf.config.threading.set_intra_op_parallelism_threads(threads)
+    tf.config.threading.set_inter_op_parallelism_threads(threads)
 import sys
 import logging
 import traceback
@@ -32,11 +38,17 @@ def initialization():
     # Set up logging
     logging_setup(args)
     logging_level = logging.getLogger().level
-    import tensorflow as tf
 
-    # Set number of processes to be used by TensorFlow
-    tf.config.threading.set_intra_op_parallelism_threads(args.processes)
-    tf.config.threading.set_inter_op_parallelism_threads(args.processes)
+    # Warn about args.processes deprecation
+    if args.processes is not None:
+        logging.warging("--processes option is not available anymore, please use BICLEANER_AI_THREADS environment variable instead.")
+
+    # Set the number of processes from the environment variable
+    # or instead use all cores
+    if "BICLEANER_AI_THREADS" in os.environ and os.environ["BICLEANER_AI_THREADS"]:
+        args.processes = int(os.environ["BICLEANER_AI_THREADS"])
+    else:
+        args.processes = max(1, cpu_count()-1)
 
     # Load metadata YAML
     args = load_metadata(args, parser)
