@@ -11,6 +11,29 @@ Although a training tool (`bicleaner-ai-train`) is provided, you may want to use
 Please, visit https://github.com/bitextor/bicleaner-ai-data/releases/latest or use `./utils/download-pack.sh` to download the latest language packages.
 Visit our [Wiki](https://github.com/bitextor/bicleaner-ai/wiki/How-to-train-your-Bicleaner-AI) for a detailed example on Bicleaner training.
 
+## Citation
+If you find Bicleaner AI useful, please consider citing the following paper:
+
+> J. Zaragoza-Bernabeu, M. Bañón, G. Ramírez-Sánchez, S. Ortiz-Rojas, \
+> "[Bicleaner AI: Bicleaner Goes Neural](http://www.lrec-conf.org/proceedings/lrec2022/pdf/2022.lrec-1.87.pdf)", \
+> in *Proceedings of the 13th Language Resources and Evaluation Conference*. \
+> Marseille, France: Language Resources and Evaluation Conference, June 2022
+
+```latex
+@InProceedings{zaragozabernabeu-EtAl:2022:LREC,
+  author    = {Zaragoza-Bernabeu, Jaume  and  Ramírez-Sánchez, Gema  and  Bañón, Marta  and  Ortiz Rojas, Sergio},
+  title     = {Bicleaner AI: Bicleaner Goes Neural},
+  booktitle      = {Proceedings of the Language Resources and Evaluation Conference},
+  month          = {June},
+  year           = {2022},
+  address        = {Marseille, France},
+  publisher      = {European Language Resources Association},
+  pages     = {824--831},
+  abstract  = {This paper describes the experiments carried out during the development of the latest version of Bicleaner, named Bicleaner AI, a tool that aims at detecting noisy sentences in parallel corpora. The tool, which now implements a new neural classifier, uses state-of-the-art techniques based on pre-trained transformer-based language models fine-tuned on a binary classification task. After that, parallel corpus filtering is performed, discarding the sentences that have lower probability of being mutual translations. Our experiments, based on the training of neural machine translation (NMT) with corpora filtered using Bicleaner AI for two different scenarios, show significant improvements in translation quality compared to the previous version of the tool which implemented a classifier based on Extremely Randomized Trees.},
+  url       = {https://aclanthology.org/2022.lrec-1.87}
+}
+```
+
 ## What is New?
 Bicleaner AI is a [Bicleaner](https://github.com/bitextor/bicleaner) fork that uses neural networks.
 It comes with two types of models, lite models for fast scoring and full models for high performance.
@@ -79,6 +102,8 @@ For example:
 TF_CPP_MIN_LOG_LEVEL=0 bicleaner-ai-classify
 ```
 **WARNING**: If you are experiencing slow downs because Bicleaner AI is not running in the GPU, you should check those logs to see if TensorFlow is loading all the libraries correctly.
+
+
 
 ## Cleaning
 
@@ -341,6 +366,15 @@ So, for languages that are not supported by this tokenizer or are poorly support
 Also note that, if a tokenizer command is used, the word frequencies need to be tokenized in the same way to allow noise based on frequency work correctly.
 
 If no tokenization is available for your languages, you can disable these noise option that use tokenization and use fuzzy mathing noise: `--womit_ratio 0 --freq_ratio 0 --fuzzy_ratio 6`.
+
+## Setting the number of threads
+To set the maximum number of threads/processes to be used during training or classifying, `--processes` option is no longer available.
+You will need to set `BICLEANER_AI_THREADS` environment variable to the desired value.
+For example:
+```
+BICLEANER_AI_THREADS=12 bicleaner-ai-classify ...
+```
+If the variable is not set, the program will use all the available CPU cores.
 
 ## Speed
 A comparison of the speed in number of sentences per second between different types of models and hardware:

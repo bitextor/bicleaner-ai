@@ -10,6 +10,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 from tensorflow.keras import layers
 from gensim.models import Word2Vec, KeyedVectors
+from contextlib import redirect_stdout
 from abc import ABC, abstractmethod
 import tensorflow.keras.backend as K
 import sentencepiece as sp
@@ -17,6 +18,7 @@ import tensorflow as tf
 import numpy as np
 import gensim
 import logging
+import sys
 
 try:
     from . import decomposable_attention
@@ -84,13 +86,15 @@ def calibrate_output(y_true, y_pred):
     else:
         verbose = 0
     model.compile(optimizer=Adam(learning_rate=5e-3), loss=loss)
-    model.fit(y_pred_balanced, y_target, epochs=5000, verbose=verbose,
-              batch_size=4096,
-              validation_split=0.1,
-              callbacks=[earlystop])
+    with redirect_stdout(sys.stderr):
+        model.fit(y_pred_balanced, y_target, epochs=5000, verbose=verbose,
+                  batch_size=4096,
+                  validation_split=0.1,
+                  callbacks=[earlystop])
 
     # Check mcc hasn't been affected
-    y_pred_calibrated = model.predict(y_pred)
+    with redirect_stdout(sys.stderr):
+        y_pred_calibrated = model.predict(y_pred, verbose=verbose)
     end_mcc = matthews_corrcoef(y_true, np.where(y_pred_calibrated>=0.5, 1, 0))
     logging.debug(f"MCC with calibrated output: {end_mcc}")
     if (init_mcc - end_mcc) > 0.02:
@@ -373,17 +377,24 @@ class BaseModel(ModelInterface):
             self.model = self.build_model()
         if logging.getLogger().level == logging.DEBUG:
             self.model.summary()
-        self.model.fit(train_generator,
-                       batch_size=settings["batch_size"],
-                       epochs=settings["epochs"],
-                       steps_per_epoch=steps_per_epoch,
-                       validation_data=dev_generator,
-                       callbacks=[earlystop, LRReport()],
-                       verbose=1)
+        if logging.getLogger().level <= logging.INFO:
+            verbose = 1
+        else:
+            verbose = 0
+
+        with redirect_stdout(sys.stderr):
+            self.model.fit(train_generator,
+                           batch_size=settings["batch_size"],
+                           epochs=settings["epochs"],
+                           steps_per_epoch=steps_per_epoch,
+                           validation_data=dev_generator,
+                           callbacks=[earlystop, LRReport()],
+                           verbose=verbose)
         self.model.save(model_filename)
 
         y_true = dev_generator.y
-        y_pred_probs = self.model.predict(dev_generator)
+        with redirect_stdout(sys.stderr):
+            y_pred_probs = self.model.predict(dev_generator, verbose=verbose)
         y_pred = np.where(y_pred_probs >= 0.5, 1, 0)
         logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
         logging.info(f"Dev recall: {recall_score(y_true, y_pred):.3f}")
@@ -613,20 +624,28 @@ class BCXLMRoberta(BaseModel):
                                         from_logits=True),
                                metrics=[FScore(argmax=True),
                                         MatthewsCorrCoef(argmax=True)])
+
         if logging.getLogger().level == logging.DEBUG:
             self.model.summary()
-        self.model.fit(train_generator,
-                       epochs=self.settings["epochs"],
-                       steps_per_epoch=steps_per_epoch,
-                       validation_data=dev_generator,
-                       batch_size=self.settings["batch_size"],
-                       callbacks=[earlystop],
-                       verbose=1)
+        if logging.getLogger().level <= logging.INFO:
+            verbose = 1
+        else:
+            verbose = 0
+
+        with redirect_stdout(sys.stderr):
+            self.model.fit(train_generator,
+                           epochs=self.settings["epochs"],
+                           steps_per_epoch=steps_per_epoch,
+                           validation_data=dev_generator,
+                           batch_size=self.settings["batch_size"],
+                           callbacks=[earlystop],
+                           verbose=verbose)
         self.model.save_pretrained(model_filename)
         self.tokenizer.save_pretrained(vocab_filename)
 
         y_true = dev_generator.y
-        y_pred = self.model.predict(dev_generator, verbose=1).logits
+        with redirect_stdout(sys.stderr):
+            y_pred = self.model.predict(dev_generator, verbose=verbose).logits
         y_pred_probs = self.softmax_pos_prob(y_pred)
         y_pred = np.argmax(y_pred, axis=-1)
         logging.info(f"Dev precision: {precision_score(y_true, y_pred):.3f}")
