@@ -26,13 +26,11 @@ try:
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import *
     from .training import build_noise, write_metadata
-    from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import *
     from training import build_noise, write_metadata
-    from tokenizer import Tokenizer
 
 logging_level = 0
 
