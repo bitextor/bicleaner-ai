@@ -3,6 +3,12 @@ import os
 # Suppress Tenssorflow logging messages unless log level is explictly set
 if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# Set Tensorflow max threads before initialization
+if 'BICLEANER_AI_THREADS' in os.environ:
+    threads = int(os.environ["BICLEANER_AI_THREADS"])
+    import tensorflow as tf
+    tf.config.threading.set_intra_op_parallelism_threads(threads)
+    tf.config.threading.set_inter_op_parallelism_threads(threads)
 from tempfile import TemporaryFile, NamedTemporaryFile, gettempdir
 from multiprocessing import cpu_count
 from timeit import default_timer
@@ -20,13 +26,11 @@ try:
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import *
     from .training import build_noise, write_metadata
-    from .tokenizer import Tokenizer
 except (SystemError, ImportError):
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import *
     from training import build_noise, write_metadata
-    from tokenizer import Tokenizer
 
 logging_level = 0
 
@@ -50,7 +54,7 @@ def initialization():
     groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
     groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
     groupO.add_argument('--block_size', type=check_positive, default=10000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
-    groupO.add_argument('-p', '--processes', type=check_positive, default=max(1, cpu_count()-1), help="Number of process to use")
+    groupO.add_argument('-p', '--processes', default=None, help="Option no longer available, please set BICLEANER_AI_THREADS environment variable")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
     groupO.add_argument('--save_train', type=str, default=None, help="Save the generated training dataset into a file. If the file already exists the training dataset will be loaded from there.")
@@ -111,12 +115,17 @@ def initialization():
 
     if args.gpu is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
-    elif "CUDA_VISIBLE_DEVICES" not in os.environ or os.environ["CUDA_VISIBLE_DEVICES"] == "":
-        import psutil
-        cpus = psutil.cpu_count(logical=False)
-        # Set number of threads for CPU training
-        tf.config.threading.set_intra_op_parallelism_threads(min(cpus, args.processes))
-        tf.config.threading.set_inter_op_parallelism_threads(min(2, args.processes))
+
+    # Warn about args.processes deprecation
+    if args.processes is not None:
+        logging.warging("--processes option is not available anymore, please use BICLEANER_AI_THREADS environment variable instead.")
+
+    # Set the number of processes from the environment variable
+    # or instead use all cores
+    if "BICLEANER_AI_THREADS" in os.environ and os.environ["BICLEANER_AI_THREADS"]:
+        args.processes = int(os.environ["BICLEANER_AI_THREADS"])
+    else:
+        args.processes = max(1, cpu_count()-1)
 
     if args.mixed_precision:
         from tensorflow.keras import mixed_precision

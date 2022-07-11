@@ -98,6 +98,8 @@ TF_CPP_MIN_LOG_LEVEL=0 bicleaner-ai-classify
 ```
 **WARNING**: If you are experiencing slow downs because Bicleaner AI is not running in the GPU, you should check those logs to see if TensorFlow is loading all the libraries correctly.
 
+
+
 ## Cleaning
 
 `bicleaner-ai-classify` aims at detecting noisy sentence pairs in a parallel corpus. It
@@ -359,6 +361,15 @@ So, for languages that are not supported by this tokenizer or are poorly support
 Also note that, if a tokenizer command is used, the word frequencies need to be tokenized in the same way to allow noise based on frequency work correctly.
 
 If no tokenization is available for your languages, you can disable these noise option that use tokenization and use fuzzy mathing noise: `--womit_ratio 0 --freq_ratio 0 --fuzzy_ratio 6`.
+
+## Setting the number of threads
+To set the maximum number of threads/processes to be used during training or classifying, `--processes` option is no longer available.
+You will need to set `BICLEANER_AI_THREADS` environment variable to the desired value.
+For example:
+```
+BICLEANER_AI_THREADS=12 bicleaner-ai-classify ...
+```
+If the variable is not set, the program will use all the available CPU cores.
 
 ## Speed
 A comparison of the speed in number of sentences per second between different types of models and hardware:

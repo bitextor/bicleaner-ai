@@ -4,6 +4,12 @@ import os
 # Suppress Tenssorflow logging messages unless log level is explictly set
 if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# Set Tensorflow max threads before initialization
+if 'BICLEANER_AI_THREADS' in os.environ:
+    threads = int(os.environ["BICLEANER_AI_THREADS"])
+    import tensorflow as tf
+    tf.config.threading.set_intra_op_parallelism_threads(threads)
+    tf.config.threading.set_inter_op_parallelism_threads(threads)
 import sys
 import traceback
 import logging
