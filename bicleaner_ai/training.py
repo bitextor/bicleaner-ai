@@ -41,54 +41,108 @@ def train_porn_removal(args):
     logging.info("Saving porn removal classifier.")
     model.save_model(args.porn_removal_file)
 
+# A generator of lists of random boolean numbers
+# that ensures both true and false appear always (if size is at least 2)
+# rand_mask(3) -> [1, 0, 1]
+# or
+# rand_mask(3) -> [0, 1, 0]
+def rand_mask(num):
+     mask = []
+     if num % 2 == 0:
+         mask.extend([1] * (num//2))
+         mask.extend([0] * (num//2))
+     else:
+         if random.getrandbits(1):
+             mask.extend([1] * (num//2 + 1))
+             mask.extend([0] * (num//2))
+         else:
+             mask.extend([1] * (num//2))
+             mask.extend([0] * (num//2 + 1))
+     random.shuffle(mask)
+     return mask
+
+
 # Generate negative and positive samples for a sentence pair
 def sentence_noise(i, src, trg, args):
     size = len(src)
     sts = []
     src_strip = src[i].strip()
     trg_strip = trg[i].strip()
+    src_tok = Tokenizer(args.source_tokenizer_command, args.source_lang)
+    trg_tok = Tokenizer(args.target_tokenizer_command, args.target_lang)
 
     # Positive samples
     for j in range(args.pos_ratio):
         sts.append(src_strip + "\t" + trg_strip+ "\t1")
 
+    # Apply noise
+    # Every noise has 50% chance of doing it in target or source
+    # using rand_mask function, we ensure both sides are corrupted if the
+    # ratio is at least 2
+
     # Random misalignment
-    for j in range(args.rand_ratio):
-        sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0")
+    for j, k in zip(range(args.rand_ratio), rand_mask(args.rand_ratio)):
+        if k:
+            sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0")
+        else:
+            sts.append(src_strip + "\t" + trg[random.randrange(1,size)].strip() + "\t0")
 
     # Frequence based noise
-    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
-    for j in range(args.freq_ratio):
-        t_toks = tokenizer.tokenize(trg[i])
-        replaced = replace_freq_words(t_toks, args.tl_word_freqs)
-        if replaced is not None:
-            sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
+    for j, k in zip(range(args.freq_ratio), rand_mask(args.freq_ratio)):
+        if k:
+            replaced = freq_noise(src[i], src_tok, args.sl_word_freqs)
+            if replaced is not None:
+                sts.append(replaced + "\t" + trg_strip + "\t0")
+        else:
+            replaced = freq_noise(trg[i], trg_tok, args.tl_word_freqs)
+            if replaced is not None:
+                sts.append(src_strip + "\t" + replaced + "\t0")
 
     # Randomly omit words
-    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
-    for j in range(args.womit_ratio):
-        t_toks = tokenizer.tokenize(trg[i])
-        omitted = omit_words(t_toks)
-        if omitted != []:
-            sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
+    for j, k in zip(range(args.womit_ratio), rand_mask(args.womit_ratio)):
+        if k:
+            s_toks = src_tok.tokenize(src[i])
+            omitted = omit_words(s_toks)
+            if omitted != []:
+                sts.append(src_tok.detokenize(omitted) + "\t" + trg_strip + "\t0")
+        else:
+            t_toks = trg_tok.tokenize(trg[i])
+            omitted = omit_words(t_toks)
+            if omitted != []:
+                sts.append(src_strip + "\t" + trg_tok.detokenize(omitted) + "\t0")
 
     # Cut sentences, a.k.a. segmentation noise
-    for j in range(args.cut_ratio):
-        t_toks = tokenizer.tokenize(trg[i])
-        if len(t_toks) <= 2:
-            break
-        cut = cut_sent(t_toks)
-        sts.append(src_strip + "\t" + tokenizer.detokenize(cut) + "\t0")
+    # randomly cut at end or begin
+    for j, k in zip(range(args.cut_ratio), rand_mask(args.cut_ratio)):
+        if k:
+            s_toks = src_tok.tokenize(src[i])
+            cut = cut_sent(s_toks, cut_end=random.getrandbits(1))
+            sts.append(src_tok.detokenize(cut) + "\t" + trg_strip + "\t0")
+        else:
+            t_toks = trg_tok.tokenize(trg[i])
+            cut = cut_sent(t_toks, cut_end=random.getrandbits(1))
+            sts.append(src_strip + "\t" + trg_tok.detokenize(cut) + "\t0")
+
+    # Glued sentences
+    for j, k in zip(range(args.glue_ratio), rand_mask(args.glue_ratio)):
+        if k:
+            glued = glue_sent(src_strip, src, src_tok)
+            sts.append(glued + "\t" + trg_strip + "\t0")
+        else:
+            glued = glue_sent(trg_strip, trg, trg_tok)
+            sts.append(src_strip + "\t" + glued + "\t0")
 
     # Misalginment by fuzzy matching
     if args.fuzzy_ratio > 0:
-        explored = {n:trg[n] for n in random.sample(range(size), min(3000, size))}
-        matches = process.extract(trg[i], explored,
-                                  scorer=fuzz.token_sort_ratio,
-                                  limit=25)
-        m_index = [m[2] for m in matches if m[1]<70][:args.fuzzy_ratio]
-        for m in m_index:
-            sts.append(src_strip + "\t" + trg[m].strip() + "\t0")
+        src_index = fuzzy_noise(src[i], src, args.fuzzy_ratio)
+        trg_index = fuzzy_noise(trg[i], trg, args.fuzzy_ratio)
+        for j, k in zip(range(args.fuzzy_ratio), rand_mask(args.fuzzy_ratio)):
+            if k:
+                fuzzed = src[src_index[j]].strip()
+                sts.append(src_strip + "\t" + fuzzed + "\t0")
+            else:
+                fuzzed = src[src_index[j]].strip()
+                sts.append(fuzzed + "\t" + trg_strip + "\t0")
 
     # Misalgniment with neighbour sentences
     if args.neighbour_mix and i <size-2 and i > 1:
@@ -248,6 +302,14 @@ def replace_freq_words(sentence, double_linked_zipf_freqs):
 
     return sentence
 
+# Apply frequency noise to a sentence
+def freq_noise(sentence, tokenizer, wordfreqs):
+    tokens = tokenizer.tokenize(sentence)
+    replaced = replace_freq_words(tokens, wordfreqs)
+    if replaced is None:
+        return None
+    return tokenizer.detokenize(replaced)
+
 # Randomly omit words in a sentence
 def omit_words(sentence):
     if len(sentence) <= 1:
@@ -258,13 +320,52 @@ def omit_words(sentence):
         del sentence[wordpos]
     return sentence
 
+def omit_noise(sentence, tokenizer):
+    tokens = tokenizer.tokenize(sentence)
+    omitted = omit_words(tokens)
+
 # Cut a sentence by a random point
-def cut_sent(sentence):
+def cut_sent(sentence, cut_begin):
+    if len(sentence) <= 2:
+        return None
     cut_point = random.randint(1, len(sentence)-1)
-    if random.getrandbits(1):
+    # cut from the point to the end
+    # or from the point to the beginning
+    if cut_begin:
         return sentence[:cut_point]
     else:
         return sentence[cut_point:]
+
+# Glue the sentence with another random sentence
+def glue_sent(sentence, sentence_list, tokenizer):
+    # choose sentence to be glued
+    to_glue = sentence_list[random.randrange(1, len(sentence_list)-1)]
+    begin = random.getrandbits(1)
+
+    # randomly cut the sentence to be glued
+    # in real scenarios sometimes sentences come glued with truncated sentences
+    if random.getrandbits(1):
+        # if we glue at the beginning, cut the beggining, and viceversa
+        cut_tok = cut_sent(tokenizer.tokenize(to_glue), cut_begin=begin)
+        if cut_tok: # Only cut when more than 2 words
+            to_glue = tokenizer.detokenize(cut_tok)
+
+    # randomly glue at the end or at the beginning
+    if begin:
+        return sentence + ' ' + to_glue
+    else:
+        return to_glue + ' ' + sentence
+
+def fuzzy_noise(sentence, sentence_list, num_matches):
+    size = len(sentence_list)
+    random_sample = random.sample(range(size), min(3000, size))
+    explored = {n:sentence_list[n] for n in random_sample}
+    matches = process.extract(sentence, explored,
+                              scorer=fuzz.token_sort_ratio,
+                              limit=25)
+    m_index = [m[2] for m in matches if m[1]<70][:num_matches]
+    return m_index
+
 
 def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
     result_str = ["["]

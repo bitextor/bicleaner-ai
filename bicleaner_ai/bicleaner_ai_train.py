@@ -75,6 +75,7 @@ def initialization():
     groupO.add_argument('--womit_ratio', default=3, type=int, help="Ratio of negative samples misaligned by randomly omitting words")
     groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence (needs --target_word_freq)")
     groupO.add_argument('--cut_ratio', default=0, type=int, help="Ratio of negative samples misaligned by cutting the sentence in a random point")
+    groupO.add_argument('--glue_ratio', default=0, type=int, help="Ratio of negative samples misaligned by gluing another sentence")
     groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
     groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
 
@@ -102,8 +103,8 @@ def initialization():
 
     args = parser.parse_args()
 
-    if args.freq_ratio > 0 and (args.target_word_freqs is None or args.source_word_freqs):
-        raise Exception("Frequence based noise needs target language word frequencies")
+    if args.freq_ratio > 0 and (args.target_word_freqs is None or args.source_word_freqs is None):
+        raise Exception("Frequence based noise needs target and source language word frequencies")
     if args.mono_train is None and args.classifier_type != 'xlmr':
         raise Exception("Argument --mono_train not found, required when not training XLMR classifier")
 
@@ -158,8 +159,8 @@ def perform_training(args):
     logging.debug("Starting process")
 
     # Load word frequencies
-    #if args.source_word_freqs:
-    #    args.sl_word_freqs = WordZipfFreqDist(args.source_word_freqs)
+    if args.source_word_freqs:
+        args.sl_word_freqs = WordZipfFreqDistDoubleLinked(args.source_word_freqs)
     if args.target_word_freqs:
         args.tl_word_freqs = WordZipfFreqDistDoubleLinked(args.target_word_freqs)
     else:
