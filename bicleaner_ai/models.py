@@ -1,4 +1,8 @@
-from transformers import TFXLMRobertaForSequenceClassification, XLMRobertaTokenizerFast
+from transformers import (
+    TFXLMRobertaForSequenceClassification,
+    XLMRobertaConfig,
+    XLMRobertaTokenizerFast
+)
 from transformers.modeling_tf_outputs import TFSequenceClassifierOutput
 from transformers.optimization_tf import create_optimizer
 from tensorflow.keras.optimizers.schedules import InverseTimeDecay
@@ -29,7 +33,7 @@ try:
     from .layers import (
             TransformerBlock,
             TokenAndPositionEmbedding,
-            BCClassificationHead)
+            BicleanerAIClassificationHead)
 except (SystemError, ImportError):
     import decomposable_attention
     from metrics import FScore, MatthewsCorrCoef
@@ -40,7 +44,7 @@ except (SystemError, ImportError):
     from layers import (
             TransformerBlock,
             TokenAndPositionEmbedding,
-            BCClassificationHead)
+            BicleanerAIClassificationHead)
 
 def calibrate_output(y_true, y_pred):
     ''' Platt calibration
@@ -521,7 +525,7 @@ class BCXLMRoberta(BaseModel):
     def load_model(self, model_file):
         settings = self.settings
 
-        tf_model = TFXLMRBicleaner.from_pretrained(
+        tf_model = TFXLMRBicleanerAI.from_pretrained(
                         model_file,
                         num_labels=settings["n_classes"],
                         head_hidden_size=settings["n_hidden"],
@@ -634,13 +638,26 @@ class BCXLMRoberta(BaseModel):
 
         return y_true, y_pred
 
-class TFXLMRBicleaner(TFXLMRobertaForSequenceClassification):
-    """Model for sentence-level classification tasks."""
+class XLMRBicleanerAIConfig(XLMRobertaConfig):
+    '''
+    Bicleaner AI XLMR configuration class
+    adds the config parameters for the classification layer
+    '''
+    def __init__(self, head_hidden_size=2048, head_dropout=0.1,
+                 head_activation='relu', **kwargs):
+        super().__init__(**kwargs)
+        self.head_hidden_size = head_hidden_size
+        self.head_dropout = head_dropout
+        self.head_activation = head_activation
 
-    def __init__(self, config, head_hidden_size, head_dropout, head_activation):
-        super().__init__(config)
-        self.classifier = BCClassificationHead(config,
-                                               head_hidden_size,
-                                               head_dropout,
-                                               head_activation,
-                                               name='bc_classification_head')
+class TFXLMRBicleanerAI(TFXLMRobertaForSequenceClassification):
+    '''
+    Model for Bicleaner sentence-level classification tasks.
+    Overwrites XLMRoberta classifiacion layer.
+    '''
+    config_class = XLMRBicleanerAIConfig
+
+    def __init__(self, config, *inputs, **kwargs):
+        super().__init__(config, *inputs, **kwargs)
+        self.classifier = BicleanerAIClassificationHead(config,
+                            name='bicleaner_ai_classification_head')
