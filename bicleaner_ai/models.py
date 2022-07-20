@@ -587,8 +587,6 @@ class BCXLMRoberta(BaseModel):
                                              shuffle=False)
         dev_generator.load(dev_set)
 
-        model_filename = self.dir + '/' + self.settings["model_file"]
-        vocab_filename = self.dir + '/' + self.settings["vocab_file"]
         earlystop = EarlyStopping(monitor='val_f1',
                                   mode='max',
                                   patience=self.settings["patience"],
@@ -621,8 +619,8 @@ class BCXLMRoberta(BaseModel):
                            batch_size=self.settings["batch_size"],
                            callbacks=[earlystop],
                            verbose=verbose)
-        self.model.save_pretrained(model_filename)
-        self.tokenizer.save_pretrained(vocab_filename)
+        self.model.save_pretrained(self.dir)
+        self.tokenizer.save_pretrained(self.dir)
 
         y_true = dev_generator.y
         with redirect_stdout(sys.stderr):
