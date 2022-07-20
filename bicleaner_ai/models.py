@@ -485,8 +485,6 @@ class BCXLMRoberta(BaseModel):
         self.tokenizer = None
 
         self.settings = {
-            "model_file": "model.tf",
-            "vocab_file": "vocab",
             "model": 'jplu/tf-xlm-roberta-base',
             "batch_size": 16,
             "maxlen": 150,
@@ -536,9 +534,8 @@ class BCXLMRoberta(BaseModel):
 
     def load(self):
         ''' Load fine-tuned model '''
-        vocab_file = self.dir + '/' + self.settings["vocab_file"]
-        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(vocab_file)
-        self.model = self.load_model(self.dir+'/'+self.settings["model_file"])
+        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(self.dir)
+        self.model = self.load_model(self.dir)
 
     def softmax_pos_prob(self, x):
         # Compute softmax probability of the second (positive) class
