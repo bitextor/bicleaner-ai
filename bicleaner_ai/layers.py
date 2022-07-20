@@ -67,18 +67,22 @@ class TransformerBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
 
-class BCClassificationHead(layers.Layer):
-    """Head for sentence-level classification tasks."""
+class BicleanerAIClassificationHead(layers.Layer):
+    """
+    Head for Bicleaner sentence classification tasks.
+    It reads BicleanerAIConfig to be able to change
+    classifier layer parameters (size, activation and dropout)
+    """
 
-    def __init__(self, config, hidden_size, dropout, activation, **kwargs):
+    def __init__(self, config, **kwargs):
         super().__init__(**kwargs)
         self.dense = layers.Dense(
-            hidden_size,
+            config.head_hidden_size,
             kernel_initializer=get_initializer(config.initializer_range),
-            activation=activation,
+            activation=config.head_activation,
             name="dense",
         )
-        self.dropout = layers.Dropout(dropout)
+        self.dropout = layers.Dropout(config.head_dropout)
         self.out_proj = layers.Dense(
             config.num_labels,
             kernel_initializer=get_initializer(config.initializer_range),
