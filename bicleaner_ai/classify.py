@@ -32,7 +32,7 @@ def argument_parser():
     ## Input file. Try to open it to check if it exists
     parser.add_argument('input', type=argparse.FileType('rt'), default=None, help="Tab-separated files to be classified")
     parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output of the classification")
-    parser.add_argument('metadata', type=argparse.FileType('r'), default=None, help="Training metadata (YAML file)")
+    parser.add_argument('model', type=str, default=None, help="Path to model directory or HuggingFace Hub model identifier (such as 'bitextor/bicleaner-ai-full-en-fr')")
 
     # Options group
     groupO = parser.add_argument_group('Optional')
@@ -60,6 +60,10 @@ def argument_parser():
     groupO.add_argument('--run_all_rules', default=False, action='store_true', help="Run all rules of Hardrules instead of stopping at first discard")
     groupO.add_argument('--rules_config', type=argparse.FileType('r'), default=None, help="Hardrules configuration file")
 
+    # HuggingFace Hub options
+    groupO.add_argument('--offline', default=False, action='store_true', help="Don't try to download the model, instead try directly to load from local storage")
+    groupO.add_argument('--auth_token', default=None, type=str, help="Auth token for the Hugging Face Hub")
+
     # Logging group
     groupL = parser.add_argument_group('Logging')
     groupL.add_argument('-q', '--quiet', action='store_true', help='Silent logging mode')
@@ -72,10 +76,11 @@ def argument_parser():
 
 # Load metadata, classifier, lm_filter and porn_removal
 def load_metadata(args, parser):
+    metadata_file = open(args.metadata)
     try:
         # Load YAML
-        metadata_yaml = yaml.safe_load(args.metadata)
-        yamlpath = os.path.dirname(os.path.abspath(args.metadata.name))
+        metadata_yaml = yaml.safe_load(metadata_file)
+        yamlpath = os.path.dirname(os.path.abspath(args.metadata))
         metadata_yaml["yamlpath"] = yamlpath
 
         # Read language pair and tokenizers
@@ -134,6 +139,9 @@ def load_metadata(args, parser):
         logging.error("Error loading metadata")
         traceback.print_exc()
         sys.exit(1)
+    finally:
+        if not metadata_file.closed:
+            metadata_file.close()
 
     # Ensure that directory exists; if not, create it
     if not os.path.exists(args.tmp_dir):
