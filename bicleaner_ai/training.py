@@ -436,6 +436,16 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
     # Save classifier
     out.write(f"classifier_type: {args.classifier_type}\n")
 
+    # Save noise parameters
+    out.write(f"pos_ratio: {args.pos_ratio}\n")
+    out.write(f"rand_ratio: {args.rand_ratio}\n")
+    out.write(f"womit_ratio: {args.womit_ratio}\n")
+    out.write(f"freq_ratio: {args.freq_ratio}\n")
+    out.write(f"cut_ratio: {args.cut_ratio}\n")
+    out.write(f"glue_ratio: {args.glue_ratio}\n")
+    out.write(f"fuzzy_ratio: {args.fuzzy_ratio}\n")
+    out.write(f"neighbour_mix: {args.neighbour_mix}\n")
+
     # Save classifier train settings
     out.write("classifier_settings:\n")
     for key in sorted(classifier.settings.keys()):
