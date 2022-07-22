@@ -50,6 +50,7 @@ def initialization():
         args.processes = max(1, cpu_count()-1)
 
     # Try to download the model if not a valid path
+    hub_not_found = False
     if not args.offline:
         from huggingface_hub import snapshot_download, model_info
         from huggingface_hub.utils import RepositoryNotFoundError
@@ -58,8 +59,7 @@ def initialization():
             # Check if it exists at the HF Hub
             model_info(args.model, token=args.auth_token)
         except RepositoryNotFoundError:
-            logging.debug(
-                    f"Model {args.model} not found at HF Hub, trying local storage")
+            hub_not_found = True
             args.metadata = args.model + '/metadata.yaml'
         else:
             logging.info(f"Downloading the model {args.model}")
@@ -70,6 +70,12 @@ def initialization():
             args.metadata = cache_path + '/metadata.yaml'
     else:
         args.metadata = args.model + '/metadata.yaml'
+
+    if not os.path.isfile(args.metadata):
+        if hub_not_found:
+            logging.error(
+                    f"Model {args.model} not found at HF Hub")
+        raise FileNotFoundError(f"model {args.model} no such file")
 
     # Load metadata YAML
     args = load_metadata(args, parser)
