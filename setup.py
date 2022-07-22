@@ -42,5 +42,6 @@ setuptools.setup(
          "scripts/bicleaner-ai-classify",
          "scripts/bicleaner-ai-train",
          "scripts/bicleaner-ai-download",
+         "scripts/bicleaner-ai-download-hf",
      ]
 )
