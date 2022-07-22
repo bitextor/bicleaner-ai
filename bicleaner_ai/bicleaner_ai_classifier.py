@@ -50,7 +50,7 @@ def initialization():
         args.processes = max(1, cpu_count()-1)
 
     # Try to download the model if not a valid path
-    if not args.offline or is_dir:
+    if not args.offline:
         from huggingface_hub import snapshot_download, model_info
         from huggingface_hub.utils import RepositoryNotFoundError
         from requests.exceptions import HTTPError
