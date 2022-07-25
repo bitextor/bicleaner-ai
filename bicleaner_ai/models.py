@@ -219,7 +219,8 @@ class BaseModel(ModelInterface):
         generator = self.get_generator(batch_size, shuffle=False)
         generator.load((x1, x2, None))
 
-        y_pred = self.model.predict(generator, verbose=verbose)
+        with redirect_stdout(sys.stderr):
+            y_pred = self.model.predict(generator, verbose=verbose)
         # Obtain logits if model returns HF output
         if isinstance(y_pred, TFSequenceClassifierOutput):
             y_pred = y_pred.logits
