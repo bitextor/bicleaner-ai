@@ -116,12 +116,14 @@ def sentence_noise(i, src, trg, args):
     for j, k in zip(range(args.cut_ratio), rand_mask(args.cut_ratio)):
         if k:
             s_toks = src_tok.tokenize(src[i])
-            cut = cut_sent(s_toks, cut_end=random.getrandbits(1))
-            sts.append(src_tok.detokenize(cut) + "\t" + trg_strip + "\t0")
+            cut = cut_sent(s_toks, cut_begin=random.getrandbits(1))
+            if cut is not None:
+                sts.append(src_tok.detokenize(cut) + "\t" + trg_strip + "\t0")
         else:
             t_toks = trg_tok.tokenize(trg[i])
-            cut = cut_sent(t_toks, cut_end=random.getrandbits(1))
-            sts.append(src_strip + "\t" + trg_tok.detokenize(cut) + "\t0")
+            cut = cut_sent(t_toks, cut_begin=random.getrandbits(1))
+            if cut is not None:
+                sts.append(src_strip + "\t" + trg_tok.detokenize(cut) + "\t0")
 
     # Glued sentences
     for j, k in zip(range(args.glue_ratio), rand_mask(args.glue_ratio)):
