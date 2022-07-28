@@ -73,7 +73,7 @@ def sentence_noise(i, src, trg, args):
 
     # Positive samples
     for j in range(args.pos_ratio):
-        sts.append(src_strip + "\t" + trg_strip+ "\t1")
+        sts.append(src_strip + "\t" + trg_strip+ "\t1\tpos")
 
     # Apply noise
     # Every noise has 50% chance of doing it in target or source
@@ -83,20 +83,20 @@ def sentence_noise(i, src, trg, args):
     # Random misalignment
     for j, k in zip(range(args.rand_ratio), rand_mask(args.rand_ratio)):
         if k:
-            sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0")
+            sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0\trand")
         else:
-            sts.append(src_strip + "\t" + trg[random.randrange(1,size)].strip() + "\t0")
+            sts.append(src_strip + "\t" + trg[random.randrange(1,size)].strip() + "\t0\trand")
 
     # Frequence based noise
     for j, k in zip(range(args.freq_ratio), rand_mask(args.freq_ratio)):
         if k:
             replaced = freq_noise(src[i], src_tok, args.sl_word_freqs)
             if replaced is not None:
-                sts.append(replaced + "\t" + trg_strip + "\t0")
+                sts.append(replaced + "\t" + trg_strip + "\t0\tfreq")
         else:
             replaced = freq_noise(trg[i], trg_tok, args.tl_word_freqs)
             if replaced is not None:
-                sts.append(src_strip + "\t" + replaced + "\t0")
+                sts.append(src_strip + "\t" + replaced + "\t0\tfreq")
 
     # Randomly omit words
     for j, k in zip(range(args.womit_ratio), rand_mask(args.womit_ratio)):
@@ -104,12 +104,12 @@ def sentence_noise(i, src, trg, args):
             s_toks = src_tok.tokenize(src[i])
             omitted = omit_words(s_toks)
             if omitted != []:
-                sts.append(src_tok.detokenize(omitted) + "\t" + trg_strip + "\t0")
+                sts.append(src_tok.detokenize(omitted) + "\t" + trg_strip + "\t0\twomit")
         else:
             t_toks = trg_tok.tokenize(trg[i])
             omitted = omit_words(t_toks)
             if omitted != []:
-                sts.append(src_strip + "\t" + trg_tok.detokenize(omitted) + "\t0")
+                sts.append(src_strip + "\t" + trg_tok.detokenize(omitted) + "\t0\twomit")
 
     # Cut sentences, a.k.a. segmentation noise
     # randomly cut at end or begin
@@ -118,21 +118,21 @@ def sentence_noise(i, src, trg, args):
             s_toks = src_tok.tokenize(src[i])
             cut = cut_sent(s_toks, cut_begin=random.getrandbits(1))
             if cut is not None:
-                sts.append(src_tok.detokenize(cut) + "\t" + trg_strip + "\t0")
+                sts.append(src_tok.detokenize(cut) + "\t" + trg_strip + "\t0\tcut")
         else:
             t_toks = trg_tok.tokenize(trg[i])
             cut = cut_sent(t_toks, cut_begin=random.getrandbits(1))
             if cut is not None:
-                sts.append(src_strip + "\t" + trg_tok.detokenize(cut) + "\t0")
+                sts.append(src_strip + "\t" + trg_tok.detokenize(cut) + "\t0\tcut")
 
     # Glued sentences
     for j, k in zip(range(args.glue_ratio), rand_mask(args.glue_ratio)):
         if k:
             glued = glue_sent(src_strip, src, src_tok)
-            sts.append(glued + "\t" + trg_strip + "\t0")
+            sts.append(glued + "\t" + trg_strip + "\t0\tglue")
         else:
             glued = glue_sent(trg_strip, trg, trg_tok)
-            sts.append(src_strip + "\t" + glued + "\t0")
+            sts.append(src_strip + "\t" + glued + "\t0\tglue")
 
     # Misalginment by fuzzy matching
     if args.fuzzy_ratio > 0:
@@ -141,15 +141,15 @@ def sentence_noise(i, src, trg, args):
         for j, k in zip(range(args.fuzzy_ratio), rand_mask(args.fuzzy_ratio)):
             if k:
                 fuzzed = src[src_index[j]].strip()
-                sts.append(src_strip + "\t" + fuzzed + "\t0")
+                sts.append(src_strip + "\t" + fuzzed + "\t0\tfuzzy")
             else:
                 fuzzed = src[src_index[j]].strip()
-                sts.append(fuzzed + "\t" + trg_strip + "\t0")
+                sts.append(fuzzed + "\t" + trg_strip + "\t0\tfuzzy")
 
     # Misalgniment with neighbour sentences
     if args.neighbour_mix and i <size-2 and i > 1:
-        sts.append(src_strip + "\t" + trg[i+1].strip()+ "\t0")
-        sts.append(src_strip + "\t" + trg[i-1].strip()+ "\t0")
+        sts.append(src_strip + "\t" + trg[i+1].strip()+ "\t0\tneighbour")
+        sts.append(src_strip + "\t" + trg[i-1].strip()+ "\t0\tneighbour")
 
     return sts
 

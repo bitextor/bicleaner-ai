@@ -2,6 +2,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
+import logging
 
 class SentenceEncoder(object):
     '''
@@ -114,7 +115,13 @@ class SentenceGenerator(tf.keras.utils.Sequence):
 
         # Build array of sample weights
         if len(data) >= 4 and data[3]:
-            self.weights = np.array(data[3], dtype=float)
+            try:
+                float(data[3][0])
+            except ValueError:
+                logging.debug("No float detected at 4th field of the data, "
+                              "ignoring data weights")
+            else:
+                self.weights = np.array(data[3], dtype=float)
 
         # Index samples
         self.num_samples = len(data[0])
