@@ -1,4 +1,5 @@
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from copy import deepcopy
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
@@ -43,6 +44,7 @@ class SentenceGenerator(tf.keras.utils.Sequence):
         self.text1 = None
         self.text2 = None
         self.weights = None
+        self.tags = None
         self.y = None
         self.encoder = encoder
         self.separator = separator
@@ -83,7 +85,7 @@ class SentenceGenerator(tf.keras.utils.Sequence):
     def encode_batch(self, text1, text2):
         raise NotImplementedError("Encoding must be defined by subclasses")
 
-    def load(self, source):
+    def load(self, source, ignore_tags=True):
         '''
         Load sentences and encode to index numbers
         If source is a string it is considered a file,
@@ -114,12 +116,18 @@ class SentenceGenerator(tf.keras.utils.Sequence):
         self.text2 = np.array(data[1], dtype=object)
 
         # Build array of sample weights
+        # If no parsable float is detected assume that there are the tags
         if len(data) >= 4 and data[3]:
             try:
                 float(data[3][0])
             except ValueError:
                 logging.debug("No float detected at 4th field of the data, "
-                              "ignoring data weights")
+                              "ignoring data weights."
+                              f" File: {source}")
+                # Load the tags (4th field) if requested
+                if not ignore_tags:
+                    logging.debug(f"Loading tags for file {source}")
+                    self.tags = deepcopy(data[3][0])
             else:
                 self.weights = np.array(data[3], dtype=float)
 

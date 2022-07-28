@@ -334,7 +334,7 @@ class BaseModel(ModelInterface):
         dev_generator = self.get_generator(
                                 settings["batch_size"],
                                 shuffle=False)
-        dev_generator.load(dev_set)
+        dev_generator.load(dev_set, ignore_tags=False)
 
         model_filename = self.dir + '/' + settings["model_file"]
         earlystop = EarlyStopping(monitor='val_f1',
@@ -580,7 +580,7 @@ class BCXLMRoberta(BaseModel):
 
         dev_generator = self.get_generator(self.settings["batch_size"],
                                              shuffle=False)
-        dev_generator.load(dev_set)
+        dev_generator.load(dev_set, ignore_tags=False)
 
         model_filename = self.dir + '/' + self.settings["model_file"]
         vocab_filename = self.dir + '/' + self.settings["vocab_file"]
