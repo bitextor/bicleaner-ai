@@ -230,7 +230,7 @@ def perform_training(args):
         except:
             classifier.train_vocab(args.mono_train, args.processes)
 
-    y_true, y_pred = classifier.train(train_sentences, valid_sentences)
+    y_true, y_pred, y_type = classifier.train(train_sentences, valid_sentences)
 
     if args.save_train is not None and train_sentences != args.save_train:
         os.unlink(train_sentences)
@@ -238,7 +238,7 @@ def perform_training(args):
     logging.info("End training")
 
     args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
-    write_metadata(args, classifier, y_true, y_pred, lm_stats)
+    write_metadata(args, classifier, y_true, y_pred, y_type, lm_stats)
     args.metadata.close()
 
     # Stats

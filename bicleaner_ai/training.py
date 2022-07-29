@@ -3,6 +3,7 @@ from heapq import heappush, heappop
 from sklearn.metrics import f1_score, precision_score, recall_score, matthews_corrcoef
 from tempfile import TemporaryFile, NamedTemporaryFile
 from fuzzywuzzy import process, fuzz
+import numpy as np
 import logging
 import os
 import random
@@ -368,7 +369,6 @@ def fuzzy_noise(sentence, sentence_list, num_matches):
     m_index = [m[2] for m in matches if m[1]<70][:num_matches]
     return m_index
 
-
 def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
     result_str = ["["]
     for i in range(len(numeric_list)):
@@ -386,7 +386,7 @@ def check_relative_path(path, filepath):
     return file_abs.replace(path_abs + '/', '').count('/') == 0
 
 # Write YAML with the training parameters and quality estimates
-def write_metadata(args, classifier, y_true, y_pred, lm_stats):
+def write_metadata(args, classifier, y_true, y_pred, y_type, lm_stats):
     out = args.metadata
 
     precision = precision_score(y_true, y_pred)
@@ -397,6 +397,16 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
     out.write(f"recall_score: {recall:.3f}\n")
     out.write(f"f1_score: {f1:.3f}\n")
     out.write(f"matthews_corr_coef: {mcc:.3f}\n")
+
+    # Compute recall by noise type
+    if y_type is not None:
+        for t in set(y_type):
+            # Extract all the samples of a type
+            true = np.extract(y_type == t, y_true)
+            pred = np.extract(y_type == t, y_pred)
+
+            # Compute recall for that type
+            out.write(f"{t}_recall: {recall_score(true, pred)}\n")
 
     # Writing it by hand (not using YAML libraries) to preserve the order
     out.write(f"source_lang: {args.source_lang}\n")

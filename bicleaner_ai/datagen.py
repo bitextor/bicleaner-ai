@@ -1,5 +1,4 @@
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from copy import deepcopy
 import sentencepiece as sp
 import tensorflow as tf
 import numpy as np
@@ -127,7 +126,7 @@ class SentenceGenerator(tf.keras.utils.Sequence):
                 # Load the tags (4th field) if requested
                 if not ignore_tags:
                     logging.debug(f"Loading tags for file {source}")
-                    self.tags = deepcopy(data[3][0])
+                    self.tags = np.array(data[3], dtype=str)
             else:
                 self.weights = np.array(data[3], dtype=float)
 

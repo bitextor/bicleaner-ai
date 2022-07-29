@@ -380,7 +380,7 @@ class BaseModel(ModelInterface):
         A, B = calibrate_output(y_true, y_pred_probs)
         self.settings["calibration_params"] = (A, B)
 
-        return y_true, y_pred
+        return y_true, y_pred, dev_generator.tags
 
 class DecomposableAttention(BaseModel):
     '''Decomposable Attention model (Parikh et. al. 2016)'''
@@ -632,7 +632,7 @@ class BCXLMRoberta(BaseModel):
         A, B = calibrate_output(y_true, y_pred_probs)
         self.settings["calibration_params"] = (A, B)
 
-        return y_true, y_pred
+        return y_true, y_pred, dev_generator.tags
 
 class TFXLMRBicleaner(TFXLMRobertaForSequenceClassification):
     """Model for sentence-level classification tasks."""
