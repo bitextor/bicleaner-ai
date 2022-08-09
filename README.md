@@ -8,7 +8,7 @@ indicates the likelihood of a pair of sentences being mutual translations (with 
 Sentence pairs considered very noisy are scored with 0.
 
 Although a training tool (`bicleaner-ai-train`) is provided, you may want to use the available ready-to-use language packages.
-Please, visit https://github.com/bitextor/bicleaner-ai-data/releases/latest or use `./utils/download-pack.sh` to download the latest language packages.
+Please, use `bicleaner-ai-download` to download the latest language packages or visit the [Github releases](https://github.com/bitextor/bicleaner-ai-data/releases/latest) for lite models and [Hugging Face Hub](https://huggingface.co/bitextor) for full models since v2.0.
 Visit our [Wiki](https://github.com/bitextor/bicleaner-ai/wiki/How-to-train-your-Bicleaner-AI) for a detailed example on Bicleaner training.
 
 ## Citation
@@ -47,21 +47,12 @@ The use of XLMRoberta and 1:10 positive to negative ratio were inspired in the w
 - TensorFlow >= 2.6.5
 - CUDA 11.2 (for training and inference with full models)
 
-Bicleaner AI is written in Python and can be installed using `pip`:
+Bicleaner AI is written in Python and can be installed using `pip`.
+It also requires the [KenLM](https://github.com/kpu/kenlm) Python bindings with support for 7-gram language models.
+You can easily install it by running the following command:
 
 ```bash
-pip install bicleaner-ai
-```
-
-Bicleaner AI requires the [KenLM](https://github.com/kpu/kenlm) Python bindings with support for 7-gram language models. You can easily install it by running the following commands:
-
-```bash
-git clone https://github.com/kpu/kenlm
-cd kenlm
-pip install . --install-option="--max_order 7"
-mkdir -p build && cd build
-cmake .. -DKENLM_MAX_ORDER=7 -DCMAKE_INSTALL_PREFIX:PATH=/your/prefix/path
-make -j all install
+pip install bicleaner-ai https://github.com/kpu/kenlm/archive/master.zip --install-option="--max_order 7"
 ```
 
 Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `python-dev` and `libhunspell-dev`:

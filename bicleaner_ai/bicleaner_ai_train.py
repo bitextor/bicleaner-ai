@@ -49,6 +49,7 @@ def initialization():
     groupM.add_argument('--parallel_valid', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences for validation")
 
     groupO = parser.add_argument_group('Options')
+    groupO.add_argument('--model_name', type=str, default=None, help='The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub.')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
     groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
@@ -211,7 +212,18 @@ def perform_training(args):
     args.parallel_train.close()
     args.parallel_valid.close()
 
+    # Define the model name
+    if args.model_name is None:
+        model_name = 'bitextor/bicleaner-ai'
+        if args.classifier_type in ['dec_attention', 'transformer']:
+            model_name += f'-lite-{args.source_lang}-{args.target_lang}'
+        else:
+            model_name += f'-full-{args.source_lang}-{args.target_lang}'
+    else:
+        model_name = args.model_name
+
     model_settings = {
+        "model_name": model_name,
         "batch_size": args.batch_size,
         "epochs": args.epochs,
         "steps_per_epoch": args.steps_per_epoch

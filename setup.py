@@ -9,7 +9,7 @@ with open("requirements.txt") as rf:
     
 setuptools.setup(
     name="bicleaner-ai",
-    version="1.0.2",
+    version="2.0",
     install_requires=requirements,
     license="GNU General Public License v3.0",
     author="Prompsit Language Engineering",
@@ -41,5 +41,7 @@ setuptools.setup(
     scripts=[
          "scripts/bicleaner-ai-classify",
          "scripts/bicleaner-ai-train",
+         "scripts/bicleaner-ai-download",
+         "scripts/bicleaner-ai-download-hf",
      ]
 )

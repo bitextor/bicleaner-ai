@@ -182,7 +182,7 @@ class ConcatSentenceGenerator(SentenceGenerator):
         else:
             # Tokenize with Transformers tokenizer that concatenates internally
             dataset = self.encoder(text1, text2,
-                                   padding='max_length',
+                                   padding='longest',
                                    truncation=True,
                                    max_length=self.maxlen,
                                    return_tensors='np',
