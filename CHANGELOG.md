@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Hide Tensorflow and Transformers logging messages in executable scripts.
 * Redirect Keras prediction progress bar to stderr.
 * Huge memory improvements during training.
+* Speed improvements using pading `longest` instead of `max_length`
 ### Changed
 * Update to Hardrules 2.3
   * Rules can be parametrized with `--rules_config config.yaml`
