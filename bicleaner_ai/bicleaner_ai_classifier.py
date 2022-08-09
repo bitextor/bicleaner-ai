@@ -58,7 +58,7 @@ def initialization():
         try:
             # Check if it exists at the HF Hub
             model_info(args.model, token=args.auth_token)
-        except RepositoryNotFoundError:
+        except (RepositoryNotFoundError, HTTPError):
             hub_not_found = True
             args.metadata = args.model + '/metadata.yaml'
         else:
@@ -74,8 +74,8 @@ def initialization():
     if not os.path.isfile(args.metadata):
         if hub_not_found:
             logging.error(
-                    f"Model {args.model} not found at HF Hub")
-        raise FileNotFoundError(f"model {args.model} no such file")
+                    f"Model {args.model} not found at HF Hub. If the model is private use --auth_token option.")
+        raise FileNotFoundError(f"model {args.metadata} no such file")
 
     # Load metadata YAML
     args = load_metadata(args, parser)
