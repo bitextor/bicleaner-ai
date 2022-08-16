@@ -8,7 +8,7 @@ sacremoses
 bicleaner-hardrules>=2.3,<3.0
 sentencepiece
 tensorflow>=2.6.5
-glove-python-binary==0.2.0
+bicleaner-ai-glove==0.2.0
 fuzzywuzzy
 python-Levenshtein
 transformers>=4.10.3,<5.0.0
