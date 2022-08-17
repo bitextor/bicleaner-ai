@@ -120,7 +120,7 @@ def initialization():
 
     # Warn about args.processes deprecation
     if args.processes is not None:
-        logging.warging("--processes option is not available anymore, please use BICLEANER_AI_THREADS environment variable instead.")
+        logging.warning("--processes option is not available anymore, please use BICLEANER_AI_THREADS environment variable instead.")
 
     # Set the number of processes from the environment variable
     # or instead use all cores
