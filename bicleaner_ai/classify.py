@@ -160,7 +160,11 @@ def classify(args, input, output):
     buf_sent_sl = []
     buf_sent_tl = []
     buf_score = []
-    hardrules = Hardrules(args)
+    # Don't load hardrules objects if disabled
+    if args.disable_hardrules:
+        hardrules = None
+    else:
+        hardrules = Hardrules(args)
 
     # Process input and output headers
     if args.header:
