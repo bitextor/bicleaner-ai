@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 usage() {
     echo "Script to download Bicleaner AI language packs."
@@ -39,7 +39,7 @@ fi
 
 if [ "$TYPE" == "full" ]; then
     # Download from HF Hub
-    bicleaner-download-hf bitextor/bicleaner-ai-full-$L1-$L2
+    bicleaner-ai-download-hf bitextor/bicleaner-ai-full-$L1-$L2
 else
     # Download from github bitextor/bicleaner-ai-data
     # and decompress tgz in the desired directory
