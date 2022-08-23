@@ -14,14 +14,11 @@ import gc
 
 #Allows to load modules while inside or outside the package
 try:
+    from . import __version__
     from .util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 except (ImportError, SystemError):
+    from bicleaner_ai import __version__
     from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
-
-__author__ = "Jaume Zaragoza"
-__version__ = "Version 1.0 # 14/06/2021 #"
-__version__ = "Version 1.0.1 # 16/06/2021 #"
-__version__ = "Version 2.0"
 
 
 # Create an argument parser and add all the arguments
