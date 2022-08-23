@@ -9,8 +9,10 @@ import random
 import fasttext
 
 try:
+    from . import __version__
     from .tokenizer import Tokenizer
 except (SystemError, ImportError):
+    from bicleaner_ai import __version__
     from tokenizer import Tokenizer
 
 # Porn removal classifier
@@ -269,6 +271,9 @@ def check_relative_path(path, filepath):
 # Write YAML with the training parameters and quality estimates
 def write_metadata(args, classifier, y_true, y_pred, lm_stats):
     out = args.metadata
+
+    # write current bicleaner ai version
+    out.write("bicleaner_ai_version: f{__version__}")
 
     precision = precision_score(y_true, y_pred)
     recall = recall_score(y_true, y_pred)
