@@ -273,7 +273,7 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
     out = args.metadata
 
     # write current bicleaner ai version
-    out.write("bicleaner_ai_version: f{__version__}")
+    out.write(f"bicleaner_ai_version: {__version__}\n")
 
     precision = precision_score(y_true, y_pred)
     recall = recall_score(y_true, y_pred)
