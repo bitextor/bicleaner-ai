@@ -633,10 +633,8 @@ class BCXLMRoberta(BaseModel):
                            batch_size=self.settings["batch_size"],
                            callbacks=[earlystop],
                            verbose=verbose)
-        self.model.save_pretrained(self.dir + '/'
-                                   + self.settings["model_file"])
-        self.tokenizer.save_pretrained(self.dir + '/'
-                                       + self.settings["vocab_file"])
+        self.model.save_pretrained(self.dir)
+        self.tokenizer.save_pretrained(self.dir)
 
         y_true = dev_generator.y
         with redirect_stdout(sys.stderr):
