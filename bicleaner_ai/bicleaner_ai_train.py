@@ -223,7 +223,8 @@ def perform_training(args):
         "model_name": model_name,
         "batch_size": args.batch_size,
         "epochs": args.epochs,
-        "steps_per_epoch": args.steps_per_epoch
+        "steps_per_epoch": args.steps_per_epoch,
+        "vocab_size": args.vocab_size if 'vocab_size' in args else None,
     }
     # Avoid overriding settings with None
     model_settings = {k:v for k,v in model_settings.items() if v is not None }
