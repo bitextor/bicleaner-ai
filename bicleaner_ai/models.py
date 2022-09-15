@@ -439,8 +439,8 @@ class Transformer(BaseModel):
                          decay_steps=self.settings["steps_per_epoch"]//4,
                          decay_rate=0.2)
         self.settings["scheduler"] = scheduler
-        self.settings["optimizer"] = Adam(learning_rate=settings["scheduler"],
-                                          clipnorm=settings["clipnorm"])
+        self.settings["optimizer"] = Adam(learning_rate=self.settings["scheduler"],
+                                          clipnorm=self.settings["clipnorm"])
 
     def get_generator(self, batch_size, shuffle):
         return ConcatSentenceGenerator(
@@ -452,8 +452,10 @@ class Transformer(BaseModel):
     def build_model(self, compile=True):
         settings = self.settings
         inputs = layers.Input(shape=(settings["maxlen"],), dtype='int32')
-        embedding = TokenAndPositionEmbedding(self.wv,
+        embedding = TokenAndPositionEmbedding(settings['vocab_size'],
+                                              settings['emb_dim'],
                                               settings["maxlen"],
+                                              self.wv,
                                               trainable=True)
         transformer_block = TransformerBlock(
                                 settings["emb_dim"],
