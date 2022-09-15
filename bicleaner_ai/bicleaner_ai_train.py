@@ -12,6 +12,7 @@ if 'BICLEANER_AI_THREADS' in os.environ:
 from tempfile import TemporaryFile, NamedTemporaryFile, gettempdir
 from multiprocessing import cpu_count
 from timeit import default_timer
+import sentencepiece as spm
 import tensorflow as tf
 import numpy as np
 import argparse
@@ -112,6 +113,7 @@ def initialization():
         random.seed(args.seed)
         os.environ["PYTHONHASHSEED"] = str(args.seed)
         tf.random.seed = args.seed
+        spm.set_random_generator_seed(args.seed)
 
     if args.gpu is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
