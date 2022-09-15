@@ -35,7 +35,7 @@ except (SystemError, ImportError):
 logging_level = 0
 
 # Argument parsing
-def initialization():
+def get_arguments(argv = None):
     global logging_level
 
     parser = argparse.ArgumentParser(prog=os.path.basename(sys.argv[0]), formatter_class=argparse.ArgumentDefaultsHelpFormatter, description=__doc__)
@@ -100,8 +100,9 @@ def initialization():
     groupL.add_argument('--debug', action='store_true', help='Debug logging mode')
     groupL.add_argument('--logfile', type=argparse.FileType('a'), default=sys.stderr, help="Store log to a file")
 
-    args = parser.parse_args()
+    return parser.parse_args(argv)
 
+def initialization(args):
     if args.freq_ratio > 0 and args.target_word_freqs is None:
         raise Exception("Frequence based noise needs target language word frequencies")
     if args.mono_train is None and args.classifier_type != 'xlmr':
@@ -149,8 +150,6 @@ def initialization():
         tf.get_logger().setLevel('INFO')
     else:
         tf.get_logger().setLevel('CRITICAL')
-
-    return args
 
 # Main loop of the program
 def perform_training(args):
