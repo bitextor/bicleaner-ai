@@ -1,5 +1,6 @@
 from bicleaner_ai.word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
 from bicleaner_ai.training import sentence_noise
+from bicleaner_ai.tokenizer import Tokenizer
 from tempfile import TemporaryDirectory
 from argparse import Namespace
 
@@ -45,3 +46,14 @@ def test_sentence_noise():
             "And anyways, isn't it supposed to be man versus machine?\tD'ailleurs, que ce n'est pas censé être l'homme contre machine ?\t0"
         ]
         assert sentence_noise(1, src, trg, args) == output
+
+
+def test_tokenizer():
+    tok = Tokenizer(None, 'fr')
+    sent = "D'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?"
+
+    assert tok.tokenize(sent) == ["D'", 'ailleurs', ',',
+            'est-ce', 'que', 'ce', "n'", 'est', 'pas',
+            'censé', 'être', "l'", 'homme', 'contre',
+            'la', 'machine', '?']
+
