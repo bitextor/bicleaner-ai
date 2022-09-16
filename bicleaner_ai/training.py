@@ -223,7 +223,7 @@ def replace_freq_words(sentence, double_linked_zipf_freqs):
             wfreq = double_linked_zipf_freqs.get_word_freq(w)
             alternatives = double_linked_zipf_freqs.get_words_for_freq(wfreq)
             if alternatives is not None:
-                alternatives = list(alternatives)
+                alternatives = list(sorted(alternatives))
 
                 # Avoid replace with the same word
                 if w.lower() in alternatives:
