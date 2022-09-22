@@ -26,13 +26,13 @@ except (ImportError, SystemError):
 
 logging_level = 0
 
-# All the scripts should have an initialization according with the usage. Template:
-def initialization():
+# Argument parsing
+def initialization(argv = None):
     global logging_level
 
     # Validating & parsing arguments
     parser, groupO, _ = argument_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # Set up logging
     logging_setup(args)
