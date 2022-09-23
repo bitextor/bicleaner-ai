@@ -63,6 +63,8 @@ def test_train_full():
         assert clf_set['batch_size'] == batch
         assert yml['classifier_type'] == classifier_type
 
+        del args
+
 
 def test_train_lite():
     with TemporaryDirectory(prefix='bicleaner-ai-test.') as dir_:
@@ -119,6 +121,8 @@ def test_train_lite():
         assert clf_set['batch_size'] == batch
         assert clf_set['vocab_size'] == vocab_size
         assert yml['classifier_type'] == classifier_type
+
+        del args
 
 
 def download_model(filename, url):
