@@ -121,22 +121,18 @@ def test_train_lite():
         assert yml['classifier_type'] == classifier_type
 
 
-def setup_module():
+def download_model(filename, url):
     ''' Download models for classifier test '''
-    def download_model(filename, url):
-        if not exists(filename):
-            download = requests.get(url, stream=True)
-            with open(filename, 'wb') as file_:
-                file_.writelines(download.iter_content(1024))
-
-    url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/full-en-fr.tgz'
-    download_model('./en-fr-full.tgz', url)
-
-    url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/lite-en-fr.tgz'
-    download_model('./en-fr-lite.tgz', url)
+    if not exists(filename):
+        download = requests.get(url, stream=True)
+        with open(filename, 'wb') as file_:
+            file_.writelines(download.iter_content(1024))
 
 
 def test_classify_lite():
+    url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/lite-en-fr.tgz'
+    download_model('./en-fr-lite.tgz', url)
+
     # Create temp dir
     with TemporaryDirectory(prefix='bicleaner-ai-classify-test.') as dir_:
         # Extract model
@@ -184,6 +180,9 @@ def test_classify_lite():
 
 
 def test_classify_full():
+    url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/full-en-fr.tgz'
+    download_model('./en-fr-full.tgz', url)
+
     # Create temp dir
     with TemporaryDirectory(prefix='bicleaner-ai-classify-test.') as dir_:
         # Extract model
