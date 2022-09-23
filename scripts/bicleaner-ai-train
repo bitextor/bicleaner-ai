@@ -13,7 +13,8 @@ import sys
 import bicleaner_ai.bicleaner_ai_train as train
 
 def main(argv):
-    args = train.initialization()
+    args = train.get_arguments()
+    train.initialization(args)
     train.main(args)
 
 if __name__ == '__main__':
