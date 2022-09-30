@@ -12,5 +12,6 @@ bicleaner-ai-glove==0.2.1
 fuzzywuzzy
 python-Levenshtein
 transformers>=4.10.3,<5.0.0
+huggingface-hub>=0.10,<1.0
 psutil
 regex

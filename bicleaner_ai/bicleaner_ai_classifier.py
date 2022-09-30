@@ -51,14 +51,15 @@ def initialization(argv = None):
 
     # Try to download the model if not a valid path
     hub_not_found = False
-    if not args.offline:
+    if not args.offline and not os.path.exists(args.model):
+        logging.info("Model path does not exist, looking in HuggingFace...")
         from huggingface_hub import snapshot_download, model_info
-        from huggingface_hub.utils import RepositoryNotFoundError
+        from huggingface_hub.utils import RepositoryNotFoundError, HFValidationError
         from requests.exceptions import HTTPError
         try:
             # Check if it exists at the HF Hub
             model_info(args.model, token=args.auth_token)
-        except (RepositoryNotFoundError, HTTPError):
+        except (RepositoryNotFoundError, HTTPError, HFValidationError):
             hub_not_found = True
             args.metadata = args.model + '/metadata.yaml'
         else:
