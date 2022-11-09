@@ -53,6 +53,15 @@ def sentence_noise(i, src, trg, args):
     # Positive samples
     for j in range(args.pos_ratio):
         sts.append(src_strip + "\t" + trg_strip+ "\t1")
+        # When omit or freq noise is enabled add additional positive samples
+        # starting with lowercase (add them with 50% probability)
+        # This avoids the missing starting capital letter flaw where sentences
+        # without it are always scored low
+        if (args.freq_ratio or args.omit_ratio) and random.getrandbits(1):
+            if src_strip[0].islower() or trg_strip[0].isupper():
+                src_lower = src_strip[0].lower() + src_strip[1:]
+                trg_lower = trg_strip[0].lower() + trg_strip[1:]
+                sts.append(src_lower + "\t" + trg_lower+ "\t1")
 
     # Random misalignment
     for j in range(args.rand_ratio):
@@ -231,8 +240,8 @@ def replace_freq_words(sentence, double_linked_zipf_freqs):
                 if not alternatives == []:
                     sentence[wordpos] = random.choice(alternatives)
 
-                    # Restore starting capital letter
-                    if wordpos == 0 and w[0].isupper():
+                    # Restore starting capital letter with 50% prob
+                    if wordpos == 0 and w[0].isupper() and random.getrandbits(1):
                         sentence[wordpos] = sentence[wordpos].capitalize()
         count += 1
         if sentence != sent_orig:
@@ -250,6 +259,9 @@ def omit_words(sentence):
     idx_words_to_delete = sorted(random.sample(range(len(sentence)), num_words_deleted), reverse=True)
     for wordpos in idx_words_to_delete:
         del sentence[wordpos]
+    # Restore starting capital letter with 50% prob
+    if sentence[0][0].isupper() and random.getrandbits(1):
+        sentence[0] = sentence[0].capitalize()
     return sentence
 
 def repr_right(numeric_list, numeric_fmt = "{:1.4f}"):
