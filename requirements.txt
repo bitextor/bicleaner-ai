@@ -5,7 +5,7 @@ pytest
 toolwrapper
 joblib
 sacremoses
-bicleaner-hardrules==2.3
+bicleaner-hardrules==2.4
 sentencepiece
 tensorflow>=2.6.5
 bicleaner-ai-glove==0.2.1

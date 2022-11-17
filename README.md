@@ -49,10 +49,11 @@ The use of XLMRoberta and 1:10 positive to negative ratio were inspired in the w
 
 Bicleaner AI is written in Python and can be installed using `pip`.
 It also requires the [KenLM](https://github.com/kpu/kenlm) Python bindings with support for 7-gram language models.
-You can easily install it by running the following command:
+You can easily install it by running the following commands:
 
 ```bash
-pip install bicleaner-ai https://github.com/kpu/kenlm/archive/master.zip --install-option="--max_order 7"
+pip install bicleaner-ai
+pip install https://github.com/kpu/kenlm/archive/master.zip --install-option="--max_order 7"
 ```
 
 Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `python-dev` and `libhunspell-dev`:
