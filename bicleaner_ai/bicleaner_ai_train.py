@@ -55,7 +55,7 @@ def get_arguments(argv = None):
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
     #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
     groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
-    groupO.add_argument('--block_size', type=check_positive, default=10000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
+    groupO.add_argument('--block_size', type=check_positive, default=2000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', default=None, help="Option no longer available, please set BICLEANER_AI_THREADS environment variable")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
