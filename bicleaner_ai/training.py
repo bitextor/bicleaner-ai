@@ -50,31 +50,24 @@ def sentence_noise(i, src, trg, args):
     src_strip = src[i].strip()
     trg_strip = trg[i].strip()
 
+    # When omit or freq noise is enabled, modify sentences
+    # starting with lowercase (with 50% probability)
+    # This avoids the missing starting capital letter flaw where sentences
+    # without it are always scored low
+    if args.freq_ratio or args.omit_ratio:
+        generate = False
+
+        # Lowercase src only, target only, both or neither randomly
+        if src_strip[0].isupper() and random.getrandbits(1):
+            src_strip = src_strip[0].lower() + src_strip[1:]
+
+        if trg_strip[0].isupper() and random.getrandbits(1):
+            trg_strip = trg_strip[0].lower() + trg_strip[1:]
+
+
     # Positive samples
     for j in range(args.pos_ratio):
         sts.append(src_strip + "\t" + trg_strip+ "\t1")
-        # When omit or freq noise is enabled add additional positive samples
-        # starting with lowercase (add them with 50% probability)
-        # This avoids the missing starting capital letter flaw where sentences
-        # without it are always scored low
-        if args.freq_ratio or args.omit_ratio:
-            generate = False
-
-            # Lowercase src only, target only, both or either randomly
-            if src_strip[0].isupper() and random.getrandbits(1):
-                src_lower = src_strip[0].lower() + src_strip[1:]
-                generate = True
-            else:
-                src_lower = src_strip
-
-            if trg_strip[0].isupper() and random.getrandbits(1):
-                trg_lower = trg_strip[0].lower() + trg_strip[1:]
-                generate = True
-            else:
-                trg_lower = trg_strip
-
-            if generate:
-                sts.append(src_lower + "\t" + trg_lower+ "\t1")
 
     # Random misalignment
     for j in range(args.rand_ratio):
