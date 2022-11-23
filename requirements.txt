@@ -8,6 +8,7 @@ sacremoses
 bicleaner-hardrules==2.4
 sentencepiece
 tensorflow>=2.6.5,<2.11
+markdown==3 # Temporary forced version until Transformers fix compatibility with tensorflow 2.11
 bicleaner-ai-glove==0.2.1
 fuzzywuzzy
 python-Levenshtein
