@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Suppress Tenssorflow logging messages unless log level is explictly set
 if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
