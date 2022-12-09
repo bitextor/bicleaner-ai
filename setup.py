@@ -37,9 +37,13 @@ setuptools.setup(
         "Prompsit Language Engineering": "http://www.prompsit.com",
         "Paracrawl": "https://paracrawl.eu/"
     },
+    entry_points={
+        "console_scripts": [
+            "bicleaner-ai-train=bicleaner_ai.bicleaner_ai_train:main",
+            "bicleaner-ai-classify=bicleaner_ai.bicleaner_ai_classifier:main",
+        ]
+    },
     scripts=[
-         "scripts/bicleaner-ai-classify",
-         "scripts/bicleaner-ai-train",
          "scripts/bicleaner-ai-download",
          "scripts/bicleaner-ai-download-hf",
      ]
