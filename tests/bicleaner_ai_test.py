@@ -3,10 +3,12 @@ import bicleaner_ai.bicleaner_ai_classifier as classifier
 from tempfile import TemporaryDirectory
 from argparse import Namespace
 from os.path import exists
+import tensorflow as tf
 import requests
 import tarfile
 import yaml
 import os
+tf.config.run_functions_eagerly(True)
 
 
 def test_train_full():
