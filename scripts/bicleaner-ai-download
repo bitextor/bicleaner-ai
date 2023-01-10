@@ -1,64 +1,84 @@
-#!/bin/bash
+#!/usr/bin/env python
+from tempfile import NamedTemporaryFile
+from argparse import ArgumentParser
+import tarfile
+import logging
+import sys
 
-usage() {
-    echo "Script to download Bicleaner AI language packs."
-    echo "It will try to download {lite,full}-lang1-lang2 and if it does not exist it will try {lite,full}-lang2-lang1 ."
-    echo
-    echo "Usage: `basename $0` <lang1> <lang2> <download_path>"
-    echo "      <lang1>         Language 1."
-    echo "      <lang2>         Language 2."
-    echo "      {lite,full}     Download lite or full model."
-    echo "      <download_path> Path where downloaded language pack should be placed. Will be ignored for full models."
-}
+from huggingface_hub import snapshot_download
+from requests import get
 
-invalid_url(){
-    wget -S --spider -o - $1 | grep -q '404 Not Found'
-}
 
-if [[ $# -lt 3 ]]
-then
-    echo "Wrong number of arguments: $@" >&2
-    usage >&2
-    exit 1
-fi
+GITHUB_URL = "https://github.com/bitextor/bicleaner-ai-data/releases/latest/download"
 
-URL="https://github.com/bitextor/bicleaner-ai-data/releases/latest/download"
-L1=$1
-L2=$2
-if [ "$3" != "lite" ] && [ "$3" != "full" ]; then
-    echo "Model type must be 'lite' or 'full' not '$3'" 1>&2
-    usage >&2
-    exit 1
-fi
-TYPE=$3
-if [ "$4" != "" ]; then
-    DOWNLOAD_PATH=$4
-else
-    DOWNLOAD_PATH="."
-fi
 
-if [ "$TYPE" == "full" ]; then
-    # Download from HF Hub
-    bicleaner-ai-download-hf bitextor/bicleaner-ai-full-$L1-$L2
-else
-    # Download from github bitextor/bicleaner-ai-data
-    # and decompress tgz in the desired directory
-    if invalid_url $URL/$TYPE-$L1-$L2.tgz
-    then
-        >&2 echo $L1-$L2 language pack does not exist, trying $L2-$L1...
-        if invalid_url $URL/$TYPE-$L2-$L1.tgz
-        then
-            >&2 echo $L2-$L1 language pack does not exist
-        else
-            wget -P $DOWNLOAD_PATH $URL/$TYPE-$L2-$L1.tgz
-            tar xvf $DOWNLOAD_PATH/$TYPE-$L2-$L1.tgz -C $DOWNLOAD_PATH
-            rm $DOWNLOAD_PATH/$TYPE-$L2-$L1.tgz
-        fi
-    else
-        wget -P $DOWNLOAD_PATH $URL/$TYPE-$L1-$L2.tgz
-        tar xvf $DOWNLOAD_PATH/$TYPE-$L1-$L2.tgz -C $DOWNLOAD_PATH
-        rm $DOWNLOAD_PATH/$TYPE-$L1-$L2.tgz
-    fi
-fi
+def logging_setup(args):
+    logger = logging.getLogger()
+    logger.handlers = []
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    h = logging.StreamHandler(sys.stderr)
+    h.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(h)
 
-echo Finished
+
+def main():
+    parser = ArgumentParser(
+            description='Download Bicleaner AI models from the Hugging Face Hub')
+    parser.add_argument('src_lang', type=str,
+                        help='Source language')
+    parser.add_argument('trg_lang', type=str,
+                        help='Target language')
+    parser.add_argument('model_type', type=str, choices=['full', 'lite'],
+                        help='Download lite or full model')
+    parser.add_argument('download_path', type=str, nargs='?',
+                        help='Path to download the model (only for lite models)')
+    parser.add_argument('-t', '--auth_token', default=None, type=str,
+                        help='Authentication token for private models downloading')
+    parser.add_argument('--debug', action='store_true')
+
+    args = parser.parse_args()
+    logging_setup(args)
+
+    if not args.download_path and args.model_type == 'lite':
+        raise Exception("Lite models need a download path")
+
+    if args.model_type == 'full':
+        #TODO fallback to github if does not exist?
+        name = f'bitextor/bicleaner-ai-full-{args.src_lang}-{args.trg_lang}'
+        logging.info(f'Downloading {name}')
+        snapshot_download(name, use_auth_token=args.auth_token)
+        return
+
+    # Download from github
+    url = f'{GITHUB_URL}/lite-{args.src_lang}-{args.trg_lang}.tgz'
+    logging.info(f"Trying {url}")
+    response = get(url, allow_redirects=True, stream=True)
+    if response.status_code == 404:
+        response.close()
+        logging.warning(f"{args.src_lang}-{args.trg_lang} language pack does not exist" \
+                        + f" trying {args.trg_lang}-{args.src_lang}...")
+        url = f'{GITHUB_URL}/lite-{args.trg_lang}-{args.src_lang}.tgz'
+        response = get(url, allow_redirects=True, stream=True)
+
+        if response.status_code == 404:
+            response.close()
+            logging.error(f"{args.trg_lang}-{args.src_lang} language pack does not exist")
+            sys.exit(1)
+
+    # Write the tgz to temp and extract to desired path
+    with NamedTemporaryFile() as temp:
+        logging.info("Downloading file")
+        with open(temp.name, mode='wb') as f:
+            f.write(response.content)
+        response.close()
+
+        logging.info(f"Extracting tar.gz file to {args.download_path}")
+        with tarfile.open(temp.name) as f:
+            f.extractall(args.download_path)
+
+
+if __name__ == "__main__":
+    main()
