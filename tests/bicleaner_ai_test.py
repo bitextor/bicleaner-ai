@@ -15,7 +15,7 @@ def test_train_full():
     with TemporaryDirectory(prefix='bicleaner-ai-test.') as dir_:
         steps = 5
         epochs = 2
-        batch = 4
+        batch = 2
         classifier_type = 'xlmr'
         src_lang = 'en'
         trg_lang = 'fr'
@@ -69,6 +69,7 @@ def test_train_full():
 
 
 def test_train_lite():
+
     with TemporaryDirectory(prefix='bicleaner-ai-test.') as dir_:
         steps = 5
         epochs = 2
