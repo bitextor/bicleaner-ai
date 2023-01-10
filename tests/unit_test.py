@@ -34,18 +34,20 @@ def test_sentence_noise():
             src.append(parts[0])
             trg.append(parts[1])
 
-        output = [
-            "And anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t1",
-            "Such in-depth analysis of the diversity of financial needs in different sectors could also be helpful in mobilizing increased political support for ODA.\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t0",
-            '"Eye for an Eye "\tD\'ailleurs, est-ce que ce n\'est pas censé être l\'homme contre la machine ?\t0', "Switzerland, Sweden, Thailand, Taiwan, Turkey, United States.\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t0",
-            "And anyways, isn't it supposed to be man versus machine?\tD'annexe, est-ce que ce n'est pas censé être à * contre la machine ?\t0",
-            "And anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce que ce n'est pas censé être à homme contre la machine ?\t0",
-            "And anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce que ce n'est pas censé être l'ni contre la machine ?\t0",
-            "And anyways, isn't it supposed to be man versus machine?\tD', est-ce que ce est pas censé l'homme contre machine\t0",
-            "And anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce ce n'est pas être homme contre la machine\t0",
-            "And anyways, isn't it supposed to be man versus machine?\tD'ailleurs, que ce n'est pas censé être l'homme contre machine ?\t0"
+        output = ["and anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t1",
+                "Switzerland, Sweden, Thailand, Taiwan, Turkey, United States.\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t0",
+                "Public expenditure must yield something in return - whether it is food quality, the preservation of the environment and animal welfare, landscapes, cultural heritage, or enhancing social balance and equity.\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t0",
+                "It has a different threshold to the one we have in Europe.\tD'ailleurs, est-ce que ce n'est pas censé être l'homme contre la machine ?\t0",
+                "and anyways, isn't it supposed to be man versus machine?\tD'annexe, est-ce que ce n'est pas censé être à homme contre la machine ?\t0",
+                "and anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce que ce n'est pas censé être à homme contre la machine ?\t0",
+                "and anyways, isn't it supposed to be man versus machine?\tD'ailleurs, est-ce que ce n'est pas censé être l'ni contre la machine ?\t0",
+                "and anyways, isn't it supposed to be man versus machine?\tD', est-ce que ce est pas censé l'homme contre machine\t0",
+                "and anyways, isn't it supposed to be man versus machine?\test-ce ce être contre la\t0",
+                "and anyways, isn't it supposed to be man versus machine?\tce est pas l'la\t0"
         ]
-        assert sentence_noise(1, src, trg, args) == output
+
+        out = sentence_noise(1, src, trg, args)
+        assert out == output
 
 
 def test_tokenizer():
