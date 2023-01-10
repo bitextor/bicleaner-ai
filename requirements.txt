@@ -5,13 +5,14 @@ pytest
 toolwrapper
 joblib
 sacremoses
-bicleaner-hardrules==2.4
+bicleaner-hardrules==2.5.1
 sentencepiece
-tensorflow>=2.6.5
+tensorflow>=2.6.5,<2.11
+markdown==3 # Temporary forced version until Transformers fix compatibility with tensorflow 2.11
 bicleaner-ai-glove==0.2.1
 fuzzywuzzy
 python-Levenshtein
-transformers>=4.10.3,<5.0.0
-huggingface-hub>=0.10,<1.0
+transformers>=4.10.3,<4.25
+huggingface-hub>=0.11,<0.12
 psutil
 regex

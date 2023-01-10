@@ -3,17 +3,19 @@ import bicleaner_ai.bicleaner_ai_classifier as classifier
 from tempfile import TemporaryDirectory
 from argparse import Namespace
 from os.path import exists
+import tensorflow as tf
 import requests
 import tarfile
 import yaml
 import os
+tf.config.run_functions_eagerly(True)
 
 
 def test_train_full():
     with TemporaryDirectory(prefix='bicleaner-ai-test.') as dir_:
         steps = 5
         epochs = 2
-        batch = 8
+        batch = 4
         classifier_type = 'xlmr'
         src_lang = 'en'
         trg_lang = 'fr'
@@ -39,7 +41,7 @@ def test_train_full():
         args = train.get_arguments(argv)
         train.initialization(args)
         # Launch training
-        train.main(args)
+        train.perform_training(args)
 
         # Check produced files
         assert exists(f'{dir_}/metadata.yaml')
@@ -99,7 +101,7 @@ def test_train_lite():
         train.initialization(args)
         args.vocab_size = vocab_size
         # Launch training
-        train.main(args)
+        train.perform_training(args)
 
         # Check produced files
         assert exists(f'{dir_}/metadata.yaml')
@@ -165,7 +167,7 @@ def test_classify_lite():
 
         # Run classifier
         args = classifier.initialization(argv)
-        classifier.main(args)
+        classifier.perform_classification(args)
         args.output.flush()
 
         # Test normal output
@@ -175,7 +177,7 @@ def test_classify_lite():
         # Run classifier with calibrated option
         argv.insert(0, '--calibrated')
         args = classifier.initialization(argv)
-        classifier.main(args)
+        classifier.perform_classification(args)
         args.output.flush()
 
         # Test calibrated output
@@ -219,7 +221,7 @@ def test_classify_full():
 
         # Run classifier
         args = classifier.initialization(argv)
-        classifier.main(args)
+        classifier.perform_classification(args)
         args.output.flush()
 
         # Test normal output
@@ -229,7 +231,7 @@ def test_classify_full():
         # Run classifier with calibrated option
         argv.insert(0, '--calibrated')
         args = classifier.initialization(argv)
-        classifier.main(args)
+        classifier.perform_classification(args)
         args.output.flush()
 
         # Test calibrated output
@@ -239,7 +241,7 @@ def test_classify_full():
         # Run classifier with calibrated option
         argv[0] = '--raw_output'
         args = classifier.initialization(argv)
-        classifier.main(args)
+        classifier.perform_classification(args)
         args.output.flush()
 
         # Test calibrated output
