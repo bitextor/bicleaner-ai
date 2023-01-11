@@ -13,17 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Huge memory improvements during training.
 * Speed improvements using pading `longest` instead of `max_length`
 ### Changed
-* Update to Hardrules 2.3
+* Update to Hardrules 2.6
   * Rules can be parametrized with `--rules_config config.yaml`
   * Some rules have been refactored with better names.
   * `--run_all_rules` mode to run each rule instead of stoppping at first discard
   * Language identification with [FastSpell](https://github.com/mbanon/fastspell)
+    * Better Serbo-Croatian and Slovene language detection.
   * Easier installation! Now KenLM comes pre-compiled.
 * Now BICLEANER\_AI\_THREADS environment variable controls the number of threads.
 * Update HF Transformers.
 * Update TensorFlow minimum version.
 * Rename `download-packs.sh` to `bicleaner-ai-download`.
 * Set inter/intra\_op parallelism to 0 by default.
+* Block size by default to 10k, a bit faster.
 * Add citation info to README.
 ### Fixed
 * Avoid generating empty sentences in omit noise.
