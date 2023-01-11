@@ -39,7 +39,7 @@ def argument_parser():
     groupO.add_argument("--header", action='store_true', help ="Input file will be expected to have a header, and the output will have a header as well")
     groupO.add_argument("--scol", default=3 if not header else "src_text", type=check_positive if not header else str, help ="Source sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
     groupO.add_argument("--tcol", default=4 if not header else "trg_text", type=check_positive if not header else str, help ="Target sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
-    groupO.add_argument('-b', '--block_size', type=int, default=1000, help="Sentence pairs per block")
+    groupO.add_argument('-b', '--block_size', type=int, default=10000, help="Sentence pairs per block")
     groupO.add_argument('-p', '--processes', default=None, help="Option no longer available, please set BICLEANER_AI_THREADS environment variable")
     groupO.add_argument('--batch_size', type=int, default=32, help="Sentence pairs per block")
 
