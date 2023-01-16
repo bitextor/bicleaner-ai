@@ -79,7 +79,7 @@ def main():
     with NamedTemporaryFile() as temp:
         logging.info("Downloading file")
         with open(temp.name, mode='wb') as f:
-            f.write(response.content)
+            f.writelines(response.iter_content(1024))
         response.close()
 
         logging.info(f"Extracting tar.gz file to {args.download_path}")
