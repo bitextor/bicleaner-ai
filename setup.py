@@ -10,6 +10,7 @@ with open("requirements.txt") as rf:
 setuptools.setup(
     name="bicleaner-ai",
     install_requires=requirements,
+    extras_require={ "transliterate" : ["cyrtranslit==1.1"] },
     license="GNU General Public License v3.0",
     author="Prompsit Language Engineering",
     author_email="info@prompsit.com",

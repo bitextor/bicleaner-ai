@@ -91,6 +91,12 @@ TF_CPP_MIN_LOG_LEVEL=0 bicleaner-ai-classify
 **WARNING**: If you are experiencing slow downs because Bicleaner AI is not running in the GPU, you should check those logs to see if TensorFlow is loading all the libraries correctly.
 
 
+### Optional requirements
+For Serbo-Croatian languages, models work better with transliteration. To be able score transliterated text, install optional dependency:
+```
+pip install bicleaner-ai[transliterate]
+```
+
 
 ## Cleaning
 
