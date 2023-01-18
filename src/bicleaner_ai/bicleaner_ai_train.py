@@ -24,11 +24,13 @@ import shutil
 
 #Allows to load modules while inside or outside the package  
 try:
+    from . import __version__
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import *
     from .training import build_noise, write_metadata
 except (SystemError, ImportError):
+    from bicleaner_ai import __version__
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import *
