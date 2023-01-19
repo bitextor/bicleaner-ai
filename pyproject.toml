@@ -1,0 +1,67 @@
+[project]
+name = "bicleaner-ai"
+version = "2.0.0rc2"
+license = {file = "LICENSE"}
+authors = [
+    { "name" = "Prompsit Language Engineering", "email" = "info@prompsit.com" }
+]
+maintainers = [
+    { "name" = "Jaume Zaragoza", "email" = "jzaragoza@prompsit.com" }
+]
+description = "Parallel corpus classifier, indicating the likelihood of a pair of sentences being mutual translations or not (neural version)"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "scikit-learn>=0.22.1",
+    "PyYAML>=5.1.2",
+    "numpy",
+    "pytest",
+    "toolwrapper",
+    "joblib",
+    "sacremoses",
+    "bicleaner-hardrules==2.6.0",
+    "sentencepiece",
+    "tensorflow>=2.6.5,<2.11",
+    "markdown==3", # Temporary forced version until Transformers fix compatibility with tensorflow 2.11
+    "bicleaner-ai-glove==0.2.1",
+    "fuzzywuzzy",
+    "python-Levenshtein",
+    "transformers>=4.10.3,<4.25",
+    "huggingface-hub>=0.11,<0.12",
+    "psutil",
+    "regex",
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.7",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Filters"
+]
+
+[project.optional-dependencies]
+transliterate = [ "cyrtranslit==1.1" ]
+
+[build-system]
+requires = [
+    "setuptools>=61",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+bicleaner-ai-train = "bicleaner_ai.bicleaner_ai_train:main"
+bicleaner-ai-classify = "bicleaner_ai.bicleaner_ai_classifier:main"
+bicleaner-ai-download = "bicleaner_ai.bicleaner_ai_download:main"
+bicleaner-ai-download-hf = "bicleaner_ai.bicleaner_ai_download_hf:main"
+
+[project_urls]
+"Bicleaner on GitHub" = "https://github.com/bitextor/bicleaner"
+"Prompsit Language Engineering" = "http://www.prompsit.com"
+"Paracrawl" = "https://paracrawl.eu/"
+"MaCoCu" = "https://macocu.eu/"
+"HPLT Project" = "https://hplt-project.org"

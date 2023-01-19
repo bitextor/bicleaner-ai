@@ -24,11 +24,13 @@ import shutil
 
 #Allows to load modules while inside or outside the package  
 try:
+    from . import __version__
     from .word_freqs_zipf import WordZipfFreqDist
     from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import *
     from .training import build_noise, write_metadata
 except (SystemError, ImportError):
+    from bicleaner_ai import __version__
     from word_freqs_zipf import WordZipfFreqDist
     from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import *
@@ -101,6 +103,7 @@ def get_arguments(argv = None):
     groupL.add_argument('-q', '--quiet', action='store_true', help='Silent logging mode')
     groupL.add_argument('--debug', action='store_true', help='Debug logging mode')
     groupL.add_argument('--logfile', type=argparse.FileType('a'), default=sys.stderr, help="Store log to a file")
+    groupL.add_argument('-v', '--version', action='version', version="%(prog)s " + __version__, help="Show version of the package and exit")
 
     return parser.parse_args(argv)
 

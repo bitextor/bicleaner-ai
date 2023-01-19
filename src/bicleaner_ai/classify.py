@@ -20,6 +20,8 @@ except (ImportError, SystemError):
     from bicleaner_ai import __version__
     from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 
+HBS_CYR = ('hbs', 'sr', 'me', 'cnr')
+
 
 # Create an argument parser and add all the arguments
 def argument_parser():
@@ -39,7 +41,7 @@ def argument_parser():
     groupO.add_argument("--header", action='store_true', help ="Input file will be expected to have a header, and the output will have a header as well")
     groupO.add_argument("--scol", default=3 if not header else "src_text", type=check_positive if not header else str, help ="Source sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
     groupO.add_argument("--tcol", default=4 if not header else "trg_text", type=check_positive if not header else str, help ="Target sentence column (starting in 1). The name of the field is expected instead of the position if --header is set")
-    groupO.add_argument('-b', '--block_size', type=int, default=1000, help="Sentence pairs per block")
+    groupO.add_argument('-b', '--block_size', type=int, default=10000, help="Sentence pairs per block")
     groupO.add_argument('-p', '--processes', default=None, help="Option no longer available, please set BICLEANER_AI_THREADS environment variable")
     groupO.add_argument('--batch_size', type=int, default=32, help="Sentence pairs per block")
 
@@ -66,7 +68,7 @@ def argument_parser():
     groupL.add_argument('-q', '--quiet', action='store_true', help='Silent logging mode')
     groupL.add_argument('--debug', action='store_true', help='Debug logging mode')
     groupL.add_argument('--logfile', type=argparse.FileType('a'), default=sys.stderr, help="Store log to a file")
-    groupL.add_argument('-v', '--version', action='version', version="%(prog)s " + __version__, help="show version of this script and exit")
+    groupL.add_argument('-v', '--version', action='version', version="%(prog)s " + __version__, help="Show version of the package and exit")
 
     return parser, groupO, groupL
 
@@ -127,6 +129,17 @@ def load_metadata(args, parser):
             args.porn_removal = None
             logging.info("Porn removal disabled")
 
+        args.translit = False
+        if args.target_lang in HBS_CYR or args.source_lang in HBS_CYR:
+            try:
+                global to_latin
+                from cyrtranslit import to_latin
+                args.translit = True
+            except (ModuleNotFoundError, NameError):
+                logging.warning("You might want to install 'cyrtranslit'"
+                                " to transliterate before scoring."
+                                "This improves accuracy and"
+                                " does not change output text.")
 
         logging.debug("YAML")
         logging.debug(metadata_yaml)
@@ -147,6 +160,22 @@ def load_metadata(args, parser):
     logging.debug("Arguments processed: {}".format(str(args)))
     logging.info("Arguments processed")
     return args
+
+
+def transliterate(args, source, target):
+    ''' Transliterate the text in a list of
+        source sentences or target sentences '''
+    if args.source_lang in HBS_CYR:
+        new_source = list(map(to_latin, source))
+    else:
+        new_source = source
+
+    if args.target_lang in HBS_CYR:
+        new_target = list(map(to_latin, target))
+    else:
+        new_target = target
+
+    return new_source, new_target
 
 
 # Classify sentences from input and place them at output
@@ -238,6 +267,12 @@ def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
         verbose = 1
     else:
         verbose = 0
+
+    # Transliterate if needed the sentences before scoring
+    # this does not change the output
+    if args.translit:
+        buf_sent_sl, buf_sent_tl = transliterate(args, buf_sent_sl, buf_sent_tl)
+
     # Classify predictions
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
         predictions = args.clf.predict(buf_sent_sl, buf_sent_tl,
