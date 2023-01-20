@@ -166,12 +166,12 @@ def transliterate(args, source, target):
     ''' Transliterate the text in a list of
         source sentences or target sentences '''
     if args.source_lang in HBS_CYR:
-        new_source = list(map(to_latin, source))
+        new_source = to_latin(source)
     else:
         new_source = source
 
     if args.target_lang in HBS_CYR:
-        new_target = list(map(to_latin, target))
+        new_target = to_latin(target)
     else:
         new_target = target
 
@@ -227,6 +227,11 @@ def classify(args, input, output):
         if len(parts) >= max(args.scol, args.tcol):
             sl_sentence=parts[args.scol -1].strip()
             tl_sentence=parts[args.tcol -1].strip()
+
+            # Transliterate if needed the sentences before scoring
+            # this does not change the output
+            if args.translit:
+                sl_sentence, tl_sentence = transliterate(args, sl_sentence, tl_sentence)
         else:
             logging.error("ERROR: scol ({}) or tcol ({}) indexes above column number ({}) on line {}".format(args.scol, args.tcol, len(parts), nline))
 
@@ -267,11 +272,6 @@ def classify_batch(args, output, buf_sent, buf_sent_sl, buf_sent_tl, buf_score):
         verbose = 1
     else:
         verbose = 0
-
-    # Transliterate if needed the sentences before scoring
-    # this does not change the output
-    if args.translit:
-        buf_sent_sl, buf_sent_tl = transliterate(args, buf_sent_sl, buf_sent_tl)
 
     # Classify predictions
     if len(buf_sent_tl) > 0 and len(buf_sent_sl) > 0:
