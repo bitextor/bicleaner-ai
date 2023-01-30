@@ -16,6 +16,7 @@ import traceback
 
 from timeit import default_timer
 from multiprocessing import cpu_count
+import regex
 
 #Allows to load modules while inside or outside the package
 try:
@@ -62,16 +63,20 @@ def initialization(argv = None):
             model_info(args.model, token=args.auth_token)
         except (RepositoryNotFoundError, HTTPError, HFValidationError):
             hub_not_found = True
-            args.metadata = args.model + '/metadata.yaml'
+            args.metadata = args.model
         else:
             logging.info(f"Downloading the model {args.model}")
             # Download all the model files from the hub
             cache_path = snapshot_download(args.model,
                                            use_auth_token=args.auth_token)
             # Set metadata path to the cache location of the model
-            args.metadata = cache_path + '/metadata.yaml'
+            args.metadata = cache_path
     else:
-        args.metadata = args.model + '/metadata.yaml'
+        args.metadata = args.model
+
+    # Add config file suffix if not present
+    if not regex.match(r'.*\.ya?ml$', args.metadata):
+        args.metadata = args.metadata + '/metadata.yaml'
 
     if not os.path.isfile(args.metadata):
         if hub_not_found:
