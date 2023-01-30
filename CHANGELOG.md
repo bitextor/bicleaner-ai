@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Models are more insensitive to the presence of capital letter at the start of the sentence.
 * Improved performance on HBS Cyrillic transliterating in models which had poor training on cyrillic text.
 * Basic test suite.
+* Allow changing the base model for XLMR. Any XLMRoberta model can be used.
 ### Changed
 * Migrate to `pyproject.toml` and `src/` tree structure, comply with PEP517, PEP518 and PEP621.
 * Update to Hardrules 2.6

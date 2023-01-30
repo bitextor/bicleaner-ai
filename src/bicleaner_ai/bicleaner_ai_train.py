@@ -54,6 +54,7 @@ def get_arguments(argv = None):
 
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('--model_name', type=str, default=None, help='The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub.')
+    groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start of. Only used in XLMR models, must be an XLMR instance.')
     groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
     groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
     #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
@@ -227,6 +228,7 @@ def perform_training(args):
 
     model_settings = {
         "model_name": model_name,
+        "base_model": args.base_model,
         "batch_size": args.batch_size,
         "epochs": args.epochs,
         "steps_per_epoch": args.steps_per_epoch,
