@@ -12,7 +12,6 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy, BinaryCrossen
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
-from tensorflow.python.keras.saving import hdf5_format
 from tensorflow.keras import layers
 from contextlib import redirect_stdout
 from glove import Corpus, Glove
@@ -28,6 +27,9 @@ import os
 
 try:
     from . import decomposable_attention
+    from .models_util import (
+            load_attributes_from_hdf5_group,
+            calibrate_output)
     from .metrics import FScore, MatthewsCorrCoef
     from .datagen import (
             TupleSentenceGenerator,
@@ -39,6 +41,9 @@ try:
             BicleanerAIClassificationHead)
 except (SystemError, ImportError):
     import decomposable_attention
+    from models_util import (
+            load_attributes_from_hdf5_group,
+            calibrate_output)
     from metrics import FScore, MatthewsCorrCoef
     from datagen import (
             TupleSentenceGenerator,
@@ -49,68 +54,6 @@ except (SystemError, ImportError):
             TokenAndPositionEmbedding,
             BicleanerAIClassificationHead)
 
-def calibrate_output(y_true, y_pred):
-    ''' Platt calibration
-    Estimate A*f(x)+B sigmoid parameters
-    '''
-    logging.info("Calibrating classifier output")
-    init_mcc = matthews_corrcoef(y_true, np.where(y_pred>=0.5, 1, 0))
-    # Define target values
-    n_pos = np.sum(y_true == 1)
-    n_neg = np.sum(y_true == 0)
-    if n_pos < n_neg:
-        # Separate pos and neg
-        y_true_pos = np.extract(y_true == 1, y_true)
-        y_true_neg = np.extract(y_true == 0, y_true)
-        y_pred_pos = np.extract(y_true == 1, y_pred)
-        y_pred_neg = np.extract(y_true == 0, y_pred)
-        # Shuffle by index to shuffle with the same pattern preds and labels
-        # and avoid srewing up labels
-        idx_neg = np.arange(len(y_true_neg))
-        np.random.shuffle(idx_neg)
-        # Extract from the shuffle the same amount of neg and pos
-        y_true_balanced = np.append(y_true_neg[idx_neg][:len(y_true_pos)], y_true_pos)
-        y_pred_balanced = np.append(y_pred_neg[idx_neg][:len(y_pred_pos)], y_pred_pos)
-    else:
-        y_true_balanced = y_true
-        y_pred_balanced = y_pred
-
-    y_target = np.where(y_true_balanced == 1, (n_pos+1)/(n_pos+2), y_true_balanced)
-    y_target = np.where(y_target == 0, 1/(n_neg+2), y_target)
-
-    # Parametrized sigmoid is equivalent to
-    # dense with single neuron and bias A*x + B
-    with tf.device("/cpu:0"):
-        model = tf.keras.Sequential([
-            tf.keras.layers.Input(shape=(1,)),
-            tf.keras.layers.Dense(1, activation='sigmoid'),
-        ])
-    loss = BinaryCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
-    earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50)
-    if logging.getLogger().level == logging.DEBUG:
-        verbose = 2
-    else:
-        verbose = 0
-    model.compile(optimizer=Adam(learning_rate=5e-3), loss=loss)
-    with redirect_stdout(sys.stderr):
-        model.fit(y_pred_balanced, y_target, epochs=5000, verbose=verbose,
-                  batch_size=4096,
-                  validation_split=0.1,
-                  callbacks=[earlystop])
-
-    # Check mcc hasn't been affected
-    with redirect_stdout(sys.stderr):
-        y_pred_calibrated = model.predict(y_pred, verbose=verbose)
-    end_mcc = matthews_corrcoef(y_true, np.where(y_pred_calibrated>=0.5, 1, 0))
-    logging.debug(f"MCC with calibrated output: {end_mcc}")
-    if (init_mcc - end_mcc) > 0.02:
-        logging.warning(f"Calibration has decreased MCC from {init_mcc:.4f} to {end_mcc:.4f}")
-
-    # Obtain scalar values from model weights
-    A = float(model.layers[0].weights[0].numpy()[0][0])
-    B = float(model.layers[0].weights[1].numpy()[0])
-    logging.debug(f"Calibrated parameters: {A} * x + {B}")
-    return A, B
 
 class ModelInterface(ABC):
     '''
@@ -351,7 +294,12 @@ class BaseModel(ModelInterface):
                                   restore_best_weights=True)
         class LRReport(Callback):
             def on_epoch_end(self, epoch, logs={}):
-                print(f' - lr: {self.model.optimizer.lr(epoch*steps_per_epoch):.3E}')
+                # Compatibility of TF2.11 with previous versions
+                if isinstance(self.model.optimizer.lr,
+                              tf.keras.optimizers.schedules.LearningRateSchedule):
+                    print(f' - lr: {self.model.optimizer.lr(epoch*steps_per_epoch):.3E}')
+                else:
+                    print(f' - lr: {float(self.model.optimizer.lr):.3E}')
 
         logging.info("Training neural classifier")
 
@@ -680,8 +628,7 @@ class TFXLMRBicleanerAI(TFXLMRobertaForSequenceClassification):
         if os.path.isdir(config._name_or_path):
             # Inspect model file to guess if it has old head name
             with h5py.File(config._name_or_path + '/tf_model.h5', 'r') as h5:
-                layers = set(hdf5_format.
-                        load_attributes_from_hdf5_group(h5, "layer_names"))
+                layers = set(load_attributes_from_hdf5_group(h5, "layer_names"))
                 if 'bc_classification_head' in layers:
                     name = 'bc_classification_head'
 
