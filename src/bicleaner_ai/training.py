@@ -44,7 +44,7 @@ def train_porn_removal(args):
     model.save_model(args.porn_removal_file)
 
 # Generate negative and positive samples for a sentence pair
-def sentence_noise(i, src, trg, args):
+def sentence_noise(i, src, trg, args, tokenizer):
     size = len(src)
     sts = []
     src_strip = src[i].strip()
@@ -74,7 +74,6 @@ def sentence_noise(i, src, trg, args):
         sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0")
 
     # Frequence based noise
-    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     for j in range(args.freq_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         replaced = replace_freq_words(t_toks, args.tl_word_freqs, args.min_freq_words)
@@ -82,7 +81,6 @@ def sentence_noise(i, src, trg, args):
             sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
 
     # Randomly omit words
-    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     for j in range(args.womit_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         omitted = omit_words(t_toks, args.min_omit_words)
@@ -109,6 +107,7 @@ def sentence_noise(i, src, trg, args):
 # Take block number from the queue and generate noise for that block
 def worker_process(num, src, trg, jobs_queue, output_queue, args):
     nlines = len(src)
+    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
 
     while True:
         job = jobs_queue.get()
@@ -119,7 +118,7 @@ def worker_process(num, src, trg, jobs_queue, output_queue, args):
             # Generate noise for each sentence in the block
             output = []
             for i in range(job, min(job+args.block_size, nlines)):
-                output.extend(sentence_noise(i, src, trg, args))
+                output.extend(sentence_noise(i, src, trg, args, tokenizer))
 
             output_file = NamedTemporaryFile('w+', delete=False)
             for j in output:
