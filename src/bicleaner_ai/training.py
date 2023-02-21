@@ -336,11 +336,6 @@ def write_metadata(args, classifier, y_true, y_pred, lm_stats):
         out.write(f"noisy_mean_perp: {lm_stats.noisy_mean}\n")
         out.write(f"noisy_stddev_perp: {lm_stats.noisy_stddev}\n")
 
-    if args.source_tokenizer_command is not None:
-        out.write(f"source_tokenizer_command: {args.source_tokenizer_command}\n")
-    if args.target_tokenizer_command is not None:
-        out.write(f"target_tokenizer_command: {args.target_tokenizer_command}\n")
-
     # Save classifier
     out.write(f"classifier_type: {args.classifier_type}\n")
 

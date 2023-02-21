@@ -12,63 +12,19 @@ except (SystemError, ImportError):
 
 
 class Tokenizer:
-    def __init__(self, command=None,  l="en"):
-        if command:
-            self.cmd = command.split(' ')
-            self.tokenizer = ToolWrapper(self.cmd)
-            self.detokenizer = None
-            self.external =  True
-            self.spm = command.find('spm_encode') > -1
-        else:
-            self.tokenizer = MosesTokenizer(lang=l)
-            self.detokenizer = MosesDetokenizer(lang=l)
-            self.external = False
-            self.spm = False
-            self.cmd = None
+    def __init__(self, l="en"):
+        self.tokenizer = MosesTokenizer(lang=l)
+        self.detokenizer = MosesDetokenizer(lang=l)
+        self.cmd = None
 
     def tokenize(self, text):
-        if self.external:
-            if isinstance(text, list):
-                return self.tokenize_block('\n'.join(text) + '\n').split('\n')
-            else:
-                self.tokenizer.writeline(text.rstrip('\n'))
-                return ([no_escaping(t) for t in self.tokenizer.readline().rstrip('\n').split()])
+        if isinstance(text, list):
+            return [self.tokenizer.tokenize(line, escape=False) for line in text]
         else:
-            if isinstance(text, list):
-                return [self.tokenizer.tokenize(line, escape=False) for line in text]
-            else:
-                return self.tokenizer.tokenize(text, escape=False)
+            return self.tokenizer.tokenize(text, escape=False)
 
     def detokenize(self, text):
-        if self.spm:
-            return ''.join(text).replace('\u2581',' ')
         elif self.detokenizer is not None:
             return self.detokenizer.detokenize(text)
         else:
             return ' '.join(text)
-
-    def close(self):
-        if self.external:
-            try:
-                self.tokenizer.close()
-            except:
-                return
-
-    def start(self):
-        if self.external:
-            self.tokenizer.start()
-
-    def restart(self):
-        if self.external:
-            self.tokenizer.restart()
-
-    def tokenize_block(self, text):
-        logging.debug(f'Opening subprocess: {self.cmd!r}')
-        output = run(self.cmd, input=text, stdout=PIPE, stderr=PIPE, env=os.environ, encoding='utf-8')
-        if output.returncode != 0:
-            logging.error(output.stderr)
-            sys.exit(1)
-        else:
-            logging.debug(f'Succesfully subprocess: {self.cmd!r}')
-            logging.debug(f'Errors: {output.stderr}')
-            return output.stdout

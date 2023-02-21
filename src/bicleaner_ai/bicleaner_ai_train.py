@@ -55,8 +55,6 @@ def get_arguments(argv = None):
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('--model_name', type=str, default=None, help='The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub.')
     groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start of. Only used in XLMR models, must be an XLMR instance.')
-    groupO.add_argument('-S', '--source_tokenizer_command', help="Source language tokenizer full command")
-    groupO.add_argument('-T', '--target_tokenizer_command', help="Target language tokenizer full command")
     #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
     groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
     groupO.add_argument('--block_size', type=check_positive, default=2000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
@@ -212,6 +210,8 @@ def perform_training(args):
         from hardrules.training import train_fluency_filter
         args.parallel_train.seek(0)
         args.input = args.parallel_train
+        args.source_tokenizer_command = None
+        args.target_tokenizer_command = None
         lm_stats = train_fluency_filter(args)
     else:
         lm_stats = None
