@@ -82,6 +82,8 @@ def get_arguments(argv = None):
     groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence (needs --target_word_freq)")
     groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
     groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
+    groupO.add_argument('--min_omit_words', default=1, type=int, help="Minimum words to omit per sentence in omit noise")
+    groupO.add_argument('--min_freq_words', default=1, type=int, help="Minimum words to replace per sentence in freq noise")
 
     # Porn removal training options
     groupO.add_argument('--porn_removal_train', type=argparse.FileType('r'), help="File with training dataset for FastText classifier. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.")

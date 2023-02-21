@@ -77,7 +77,7 @@ def sentence_noise(i, src, trg, args):
     tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     for j in range(args.freq_ratio):
         t_toks = tokenizer.tokenize(trg[i])
-        replaced = replace_freq_words(t_toks, args.tl_word_freqs)
+        replaced = replace_freq_words(t_toks, args.tl_word_freqs, args.min_freq_words)
         if replaced is not None:
             sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
 
@@ -85,7 +85,7 @@ def sentence_noise(i, src, trg, args):
     tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
     for j in range(args.womit_ratio):
         t_toks = tokenizer.tokenize(trg[i])
-        omitted = omit_words(t_toks)
+        omitted = omit_words(t_toks, args.min_omit_words)
         if omitted != []:
             sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
 
@@ -223,13 +223,15 @@ def build_noise(input, args):
     return output_file.name
 
 # Randomly replace words with other words of same frequency
-def replace_freq_words(sentence, double_linked_zipf_freqs):
+def replace_freq_words(sentence, double_linked_zipf_freqs, min_words=1):
+    if len(sentence) <= min_words:
+        return None # Don't apply noise if sent short than minimum words replaced
     count = 0
     sent_orig = sentence[:]
     # Loop until any of the chosen words have an alternative, at most 3 times
     while True:
         # Random number of words that will be replaced
-        num_words_replaced = random.randint(1, len(sentence))
+        num_words_replaced = random.randint(min_words, len(sentence))
         # Replacing N words at random positions
         idx_words_to_replace = random.sample(range(len(sentence)), num_words_replaced)
 
@@ -258,10 +260,10 @@ def replace_freq_words(sentence, double_linked_zipf_freqs):
     return sentence
 
 # Randomly omit words in a sentence
-def omit_words(sentence):
-    if len(sentence) <= 1:
+def omit_words(sentence, min_omit=1):
+    if len(sentence) <= min_omit:
         return []
-    num_words_deleted = random.randint(1, len(sentence)-1)
+    num_words_deleted = random.randint(min_omit, len(sentence)-1)
     idx_words_to_delete = sorted(random.sample(range(len(sentence)), num_words_deleted), reverse=True)
     for wordpos in idx_words_to_delete:
         del sentence[wordpos]
