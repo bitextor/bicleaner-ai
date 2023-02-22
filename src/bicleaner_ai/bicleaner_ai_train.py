@@ -57,6 +57,7 @@ def get_arguments(argv = None):
     groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start of. Only used in XLMR models, must be an XLMR instance.')
     #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
     groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
+    groupO.add_argument('--target_tokenizer_type', choices=['word', 'char'], help='Type of tokenization for noise generation.')
     groupO.add_argument('--block_size', type=check_positive, default=2000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
     groupO.add_argument('-p', '--processes', default=None, help="Option no longer available, please set BICLEANER_AI_THREADS environment variable")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")

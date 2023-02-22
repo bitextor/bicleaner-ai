@@ -10,21 +10,41 @@ try:
 except (SystemError, ImportError):
     from util import  no_escaping
 
-
 class Tokenizer:
+    def get_tokenizer(cls, tok_type, l='eng'):
+        if tok_type == 'word':
+            return WordTokenizer(l)
+        else:
+            return CharTokenizer()
+
+    def tokenize(self, text):
+        pass
+
+    def detokenize(self, text):
+        pass
+
+
+class CharTokenizer(Tokenizer):
+    ''' Separate each character with a space
+        for languages like Chinese this can be a solution
+    '''
+
+    def tokenize(self, text):
+        return [c for c in text.rstrip('\n')]
+
+    def detokenize(self, text):
+        return ''.join(text)
+
+
+class WordTokenizer(Tokenizer):
+    ''' Sacremoses tokenizer '''
+
     def __init__(self, l="en"):
         self.tokenizer = MosesTokenizer(lang=l)
         self.detokenizer = MosesDetokenizer(lang=l)
-        self.cmd = None
 
     def tokenize(self, text):
-        if isinstance(text, list):
-            return [self.tokenizer.tokenize(line, escape=False) for line in text]
-        else:
-            return self.tokenizer.tokenize(text, escape=False)
+        return self.tokenizer.tokenize(text, escape=False)
 
     def detokenize(self, text):
-        elif self.detokenizer is not None:
-            return self.detokenizer.detokenize(text)
-        else:
-            return ' '.join(text)
+        return self.detokenizer.detokenize(text)

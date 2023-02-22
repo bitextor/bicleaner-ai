@@ -107,7 +107,9 @@ def sentence_noise(i, src, trg, args, tokenizer):
 # Take block number from the queue and generate noise for that block
 def worker_process(num, src, trg, jobs_queue, output_queue, args):
     nlines = len(src)
-    tokenizer = Tokenizer(args.target_tokenizer_command, args.target_lang)
+    tokenizer = Tokenizer.get_tokenizer(
+                    args.target_tokenizer_type,
+                    args.target_lang)
 
     while True:
         job = jobs_queue.get()
