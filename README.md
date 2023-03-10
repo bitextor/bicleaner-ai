@@ -56,7 +56,7 @@ You can easily install it by running the following commands:
 
 ```bash
 pip install bicleaner-ai
-pip install https://github.com/kpu/kenlm/archive/master.zip --install-option="--max_order 7"
+pip install --config-settings="--build-option=--max_order=7" https://github.com/kpu/kenlm/archive/master.zip
 ```
 
 Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `python-dev` and `libhunspell-dev`:
