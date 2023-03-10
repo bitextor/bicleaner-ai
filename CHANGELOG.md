@@ -4,7 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Bicleaner AI 2.0.0:
+## Bicleaner AI 2.1.0:
+### Added
+
+### Changed
+* Update Hardrules to 2.8.0
+   * Better coverage of Icelandic langid
+   * Updated KenLM installation instructions.
+
+### Fixed
+* KenLM installation.
+
+
+## Bicleaner AI 2.0:
 ### Added
 * Upload full models to Hugging Face Hub.
 * Automatic download of full models.
