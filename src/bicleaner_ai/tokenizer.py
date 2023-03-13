@@ -12,10 +12,10 @@ except (SystemError, ImportError):
 
 class Tokenizer:
     def get_tokenizer(cls, tok_type, l='eng'):
-        if tok_type == 'word':
-            return WordTokenizer(l)
-        else:
+        if tok_type == 'char':
             return CharTokenizer()
+        else:
+            return WordTokenizer(l)
 
     def tokenize(self, text):
         pass
