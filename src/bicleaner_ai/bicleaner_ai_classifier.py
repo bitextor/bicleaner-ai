@@ -51,10 +51,10 @@ def initialization(argv = None):
     else:
         args.processes = max(1, cpu_count()-1)
 
-    # Try to download the model if not a valid path
+    # Try to use HF if not a valid model path
     hub_not_found = False
     if not args.offline and not os.path.exists(args.model):
-        logging.info("Model path does not exist, looking in HuggingFace...")
+        logging.debug("Model path does not exist, looking in HuggingFace...")
         from huggingface_hub import snapshot_download, model_info
         from huggingface_hub.utils import RepositoryNotFoundError, HFValidationError
         from requests.exceptions import HTTPError
@@ -65,10 +65,16 @@ def initialization(argv = None):
             hub_not_found = True
             args.metadata = args.model
         else:
-            logging.info(f"Downloading the model {args.model}")
-            # Download all the model files from the hub
-            cache_path = snapshot_download(args.model,
-                                           use_auth_token=args.auth_token)
+            # Check if already downloaded
+            try:
+                # Use local files to avoid triggering the download code
+                cache_path = snapshot_download(args.model, local_files_only=True)
+            except FileNotFoundError:
+                # Not downloaded
+                # Download all the model files from the hub
+                logging.info(f"Downloading the model {args.model}")
+                cache_path = snapshot_download(args.model,
+                                               use_auth_token=args.auth_token)
             # Set metadata path to the cache location of the model
             args.metadata = cache_path
     else:
