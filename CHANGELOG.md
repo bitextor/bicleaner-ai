@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased:
+### Added
+- Support tokenizing by characters (useful for Chinese).
+- CLI option to configure minimum words/tokens to be omited/replaced.
+
+### Changed
+- Refactored Tokenizer class.
+- Update HF hub.
+- Create only one Tokenizer object per process in noise function.
+- Removed external tokenizer option.
+
+### Fixed
+
 ## Bicleaner AI 2.1.0:
 ### Added
 
