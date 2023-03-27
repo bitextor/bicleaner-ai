@@ -96,49 +96,59 @@ Note that this won't transliterate the output text, it will be used only for sco
 
 
 ## Cleaning
-
+### Getting Started
 `bicleaner-ai-classify` aims at detecting noisy sentence pairs in a parallel corpus. It
 indicates the likelihood of a pair of sentences being mutual translations (with a value near to 1) or not (with a value near to 0). Sentence pairs considered very noisy are scored with 0.
 
-By default, the input file (the parallel corpus to be classified) must contain at least four columns, being:
+By default, the input file (the parallel corpus to be classified) expects at least four columns, being:
 
 * col1: URL 1
 * col2: URL 2
 * col3: Source sentence
 * col4: Target sentence
 
-but the source and target sentences column index can be customized by using the `--scol` and `--tcol` flags.
+but the source and target sentences column index can be customized by using the `--scol` and `--tcol` flags. Urls are not mandatory.
 
 The generated output file will contain the same lines and columns that the original input file had, adding an extra column containing the Bicleaner AI classifier score.
 
-This tool can be run with
+#### Download a model
+Bicleaner AI has two types of models, full and lite models.
+Full models are recommended, as they provide much higher quality.
+If speed is a hard constraint to you, lite models could be an option (take a look at the speed [comparison](#speed)).
 
-```bash
-bicleaner-ai-classify [-h]
-    [-S SOURCE_TOKENIZER_COMMAND]
-    [-T TARGET_TOKENIZER_COMMAND]
-    [--header]
-    [--scol SCOL]
-    [--tcol TCOL]
-    [-b BLOCK_SIZE]
-    [--batch_size BATCH_SIZE]
-    [--tmp_dir TMP_DIR]
-    [-d DISCARDED_TUS]
-    [--score_only]
-    [--calibrated]
-    [--raw_output]
-    [--disable_hardrules]
-    [--disable_lm_filter]
-    [--disable_porn_removal]
-    [--disable_minimal_length]
-    [-q]
-    [--debug]
-    [--logfile LOGFILE]
-    [-v]
-    input [output] metadata
+See available full models [here](https://huggingface.co/models?other=bicleaner-ai) and available lite models [here](https://github.com/bitextor/bicleaner-ai-data/releases/latest).
+
+You can download the model with:
 ```
+bicleaner-ai-download en fr full
+```
+This will download `bitextor/bicleaner-ai-full-en-fr` model from HuggingFace and store it at the cache directory.
+
+Or you can download a lite model with:
+```
+bicleaner-ai-download en fr lite ./bicleaner-models
+```
+This will download and store the en-fr lite model at `./bicleaner-models/en-fr`.
+
+#### Classifying
+To classify a tab separated file containing English sentences in the first column and French sentences in the second column, use
+```bash
+bicleaner-ai-classify  \
+        --scol 1 --tcol 2
+        corpus.en-fr.tsv  \
+        corpus.en-fr.classifed.tsv  \
+        bitextor/bicleaner-ai-full-en-fr
+```
+where `--scol` and `--tcol` indicate the location of source and target sentence,
+`corpus.en-fr.tsv` the input file,
+`corpus.en-fr.classified.tsv` output file and `bitextor/bicleaner-ai-en-fr` is the HuggingFace model name.
+Each line of the new file will contain the same content as the input file, adding a column with the score given by the Bicleaner classifier.
+
+Note that, to use a lite model, you need to provide model path in your local file system, instead of HuggingFace model name.
+
 
 ### Parameters
+The complete list of parameters is:
 
 * positional arguments:
   * `input`: Tab-separated files to be classified (default line format: `URL1 URL2 SOURCE_SENTENCE TARGET_SENTENCE [EXTRA_COLUMNS]`, tab-separated). When input is -, reads standard input.
@@ -172,20 +182,6 @@ bicleaner-ai-classify [-h]
   * `--debug`: Debug logging mode (default: False)
   * `--logfile LOGFILE`: Store log to a file (default: \<\_io.TextIOWrapper name='<stderr>' mode='w' encoding='UTF-8'\>)
   * `-v, --version`: show version of this script and exit
-
-### Example
-
-```bash
-bicleaner-ai-classify  \
-        corpus.en-es.raw  \
-        corpus.en-es.classifed  \
-        model/en-es/metadata.yaml
-```
-
-This will read the `corpus.en-es.raw` file,
-classify it with the classifier indicated in the `models/en-es/metadata.yaml` metadata file,
-writing the result of the classification in the `corpus.en-es.classified` file.
-Each line of the new file will contain the same content as the input file, adding a column with the score given by the Bicleaner classifier.
 
 ## Training classifiers
 
