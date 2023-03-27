@@ -26,7 +26,7 @@ dependencies = [
     "fuzzywuzzy",
     "python-Levenshtein",
     "transformers==4.26",
-    "huggingface-hub>=0.11,<0.12",
+    "huggingface-hub>=0.13,<0.14",
     "psutil",
     "regex",
 ]
