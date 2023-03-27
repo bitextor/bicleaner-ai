@@ -159,6 +159,8 @@ def initialization(args):
     else:
         tf.get_logger().setLevel('CRITICAL')
 
+    logging.debug(args)
+
 # Main loop of the program
 def perform_training(args):
     time_start = default_timer()

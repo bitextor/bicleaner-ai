@@ -93,6 +93,8 @@ def initialization(argv = None):
     # Load metadata YAML
     args = load_metadata(args, parser)
 
+    logging.debug(args)
+
     return args
 
 # Filtering input texts
