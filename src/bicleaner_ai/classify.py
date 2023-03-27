@@ -46,7 +46,6 @@ def argument_parser():
     groupO.add_argument('--batch_size', type=int, default=32, help="Sentence pairs per block")
 
     groupO.add_argument('--tmp_dir', default=gettempdir(), help="Temporary directory where creating the temporary files of this program")
-    groupO.add_argument('-d', '--discarded_tus', type=argparse.FileType('w'), default=None, help="TSV file with discarded TUs. Discarded TUs by the classifier are written in this file in TSV file.")
     groupO.add_argument('--score_only',action='store_true', help="Only output one column which is the bicleaner score", default=False)
     groupO.add_argument('--calibrated',action='store_true', help="Output calibrated scores", default=False)
     groupO.add_argument('--raw_output',action='store_true', help="Return raw output without computing positive class probability.", default=False)
