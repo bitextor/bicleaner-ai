@@ -27,7 +27,7 @@ def logging_setup(args):
 
 def main():
     parser = ArgumentParser(
-            description='Download Bicleaner AI models from the Hugging Face Hub')
+            description='Download Bicleaner AI models from the HuggingFace Hub or GitHub')
     parser.add_argument('src_lang', type=str,
                         help='Source language')
     parser.add_argument('trg_lang', type=str,
