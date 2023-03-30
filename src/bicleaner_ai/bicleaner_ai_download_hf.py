@@ -9,7 +9,7 @@ def main():
 
     args = parser.parse_args()
 
-    snapshot_download(args.model, use_auth_token=args.auth_token)
+    snapshot_download(args.model, use_auth_token=args.auth_token, etag_timeout=100)
 
 if __name__ == "__main__":
     main()
