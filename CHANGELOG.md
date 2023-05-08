@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix HF downloads in some slow docker instances with increased etag timeout.
+- Fix builds in PIP>=23 with new Hardrules and FastSpell.
 
 ## Bicleaner AI 2.2.0:
 ### Added
