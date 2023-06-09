@@ -139,6 +139,12 @@ def load_metadata(args, parser):
                                 " to transliterate before scoring."
                                 "This improves accuracy and"
                                 " does not change output text.")
+        # Load rules config
+        if args.rules_config:
+            yaml_file = args.rules_config
+            args.rules_config = yaml.safe_load(args.rules_config)
+            yaml_file.close()
+
 
         logging.debug("YAML")
         logging.debug(metadata_yaml)
