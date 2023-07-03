@@ -25,8 +25,8 @@ dependencies = [
     "bicleaner-ai-glove==0.2.1",
     "fuzzywuzzy",
     "python-Levenshtein",
-    "transformers==4.26",
-    "huggingface-hub>=0.13,<0.14",
+    "transformers==4.30.2",
+    "huggingface-hub==0.15.1",
     "psutil",
     "regex",
 ]
