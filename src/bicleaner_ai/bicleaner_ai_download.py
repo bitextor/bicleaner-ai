@@ -51,7 +51,16 @@ def main():
         name = f'bitextor/bicleaner-ai-full-{args.src_lang}-{args.trg_lang}'
         logging.info(f'Downloading {name}')
         try:
-            snapshot_download(name, use_auth_token=args.auth_token, etag_timeout=100, max_workers=1)
+            if not args.download_path:
+                snapshot_download(name, use_auth_token=args.auth_token,
+                                  etag_timeout=100, max_workers=1)
+            else:
+                local_dir = f"{args.download_path}/{args.src_lang}-{args.trg_lang}"
+                logging.debug(f"Saving model to local dir: {local_dir}")
+                snapshot_download(name, use_auth_token=args.auth_token,
+                                  local_dir=local_dir,
+                                  local_dir_use_symlinks=False,
+                                  etag_timeout=100, max_workers=1)
             return
         except RepositoryNotFoundError:
             if not args.download_path:
