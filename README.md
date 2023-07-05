@@ -130,6 +130,11 @@ bicleaner-ai-download en fr lite ./bicleaner-models
 ```
 This will download and store the en-fr lite model at `./bicleaner-models/en-fr`.
 
+Since 2.3.0 version, full models also accept a local path to download, instead of the HF cache directory.
+In that case, to use the model, provide the local path instead of the HF identifier.
+
+To read more information about how HF cache works, please read the [official documentation](https://huggingface.co/docs/transformers/v4.30.0/en/installation#cache-setup).
+
 #### Classifying
 To classify a tab separated file containing English sentences in the first column and French sentences in the second column, use
 ```bash
