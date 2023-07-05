@@ -4,11 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Bicleaner AI 2.2.2:
+## Bicleaner AI 2.3.0:
 ### Added
+- Full models download from HF now accept a local path to store the model instead of using HF cache.
 
 ### Changed
+- Update HuggingFace Transformers and Hub.
+- Update documentation about downloading models and managing HF cache.
 
+### Fixed
+- Use a single worker to download from HF, fixes timeout errors during download.
+
+
+## Bicleaner AI 2.2.2:
 ### Fixed
 - Fix '--rules_config' parameter.
 
