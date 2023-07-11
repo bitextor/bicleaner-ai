@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Bicleaner AI 2.3.1:
+### Added:
+- `bicleaner-ai-download` quiet mode.
+
+
 ## Bicleaner AI 2.3.0:
 ### Added
 - Full models download from HF now accept a local path to store the model instead of using HF cache.
