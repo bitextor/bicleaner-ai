@@ -7,6 +7,8 @@ import sys
 
 from huggingface_hub import snapshot_download
 from huggingface_hub.utils import RepositoryNotFoundError, HFValidationError
+from huggingface_hub import logging as hf_logging
+from huggingface_hub.utils import disable_progress_bars
 from requests import get
 
 
@@ -16,7 +18,11 @@ GITHUB_URL = "https://github.com/bitextor/bicleaner-ai-data/releases/latest/down
 def logging_setup(args):
     logger = logging.getLogger()
     logger.handlers = []
-    if args.debug:
+    if args.quiet:
+        logger.setLevel(logging.ERROR)
+        hf_logging.set_verbosity_error()
+        disable_progress_bars()
+    elif args.debug:
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
@@ -38,6 +44,7 @@ def main():
                         help='Path to download the model (only for old Github models)')
     parser.add_argument('-t', '--auth_token', default=None, type=str,
                         help='Authentication token for private models downloading')
+    parser.add_argument('-q', '--quiet', action='store_true', help='Suppress logging messages')
     parser.add_argument('--debug', action='store_true')
 
     args = parser.parse_args()
