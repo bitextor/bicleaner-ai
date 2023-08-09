@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added:
 - `bicleaner-ai-download` quiet mode.
 
+### Changed:
+- Update hardrules to 2.9.0, now hardrules accepts HF identifiers to load metadata.
 
 ## Bicleaner AI 2.3.0:
 ### Added
