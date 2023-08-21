@@ -78,8 +78,8 @@ def load_metadata(args, parser):
     try:
         # Load YAML
         metadata_yaml = yaml.safe_load(metadata_file)
-        yamlpath = os.path.dirname(os.path.abspath(args.metadata))
-        metadata_yaml["yamlpath"] = yamlpath
+        yamldir = os.path.dirname(os.path.abspath(args.metadata))
+        metadata_yaml["yamldir"] = yamldir
 
         # Read language pair and tokenizers
         args.source_lang=metadata_yaml["source_lang"]
@@ -96,7 +96,7 @@ def load_metadata(args, parser):
                 logging.info(f"Enabling calibrated output with parameters: {cal_params}")
         else:
             cal_params = None
-        args.clf = get_model(metadata_yaml["classifier_type"])(yamlpath,
+        args.clf = get_model(metadata_yaml["classifier_type"])(yamldir,
                                                 metadata_yaml["classifier_settings"])
         args.clf.load()
 
@@ -121,7 +121,7 @@ def load_metadata(args, parser):
                 logging.warning("Porn removal not present in metadata, disabling")
             else:
                 try:
-                    args.porn_removal = fasttext.load_model(os.path.join(yamlpath, metadata_yaml['porn_removal_file']))
+                    args.porn_removal = fasttext.load_model(os.path.join(yamldir, metadata_yaml['porn_removal_file']))
                 except:
                     args.porn_removal = fasttext.load_model(args.metadata_yaml['porn_removal_file'])
         else:
