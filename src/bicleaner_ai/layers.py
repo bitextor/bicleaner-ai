@@ -1,3 +1,4 @@
+from transformers.models.deberta_v2.modeling_tf_deberta_v2 import TFDebertaV2StableDropout
 from transformers.modeling_tf_utils import get_initializer
 from tensorflow.keras import layers
 from tensorflow import keras
@@ -79,20 +80,12 @@ class BicleanerAIClassificationHead(layers.Layer):
         self.dense = layers.Dense(
             config.head_hidden_size,
             kernel_initializer=get_initializer(config.initializer_range),
-            activation=config.head_activation,
             name="dense",
         )
-        self.dropout = layers.Dropout(config.head_dropout)
-        self.out_proj = layers.Dense(
-            config.num_labels,
-            kernel_initializer=get_initializer(config.initializer_range),
-            name="out_proj"
-        )
+        self.dropout = TFDebertaV2StableDropout(config.head_dropout, name="dropout")
 
     def call(self, features, training=False):
-        x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        x = features[:, 0] # pool the model taking the hiddent state of first token
         x = self.dropout(x, training=training)
         x = self.dense(x)
-        x = self.dropout(x, training=training)
-        x = self.out_proj(x)
         return x

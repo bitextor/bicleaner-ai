@@ -1,7 +1,7 @@
 from transformers import (
-    TFXLMRobertaForSequenceClassification,
-    XLMRobertaConfig,
-    XLMRobertaTokenizerFast
+    TFDebertaV2ForSequenceClassification,
+    DebertaV2Config,
+    DebertaV2TokenizerFast
 )
 from transformers.modeling_tf_outputs import TFSequenceClassifierOutput
 from transformers.optimization_tf import create_optimizer
@@ -439,7 +439,7 @@ class BCXLMRoberta(BaseModel):
         self.tokenizer = None
 
         self.settings = {
-            "base_model": 'jplu/tf-xlm-roberta-base',
+            "base_model": 'microsoft/mdeberta-v3-base',
             "batch_size": 16,
             "maxlen": 150,
             "n_classes": 2,
@@ -499,7 +499,7 @@ class BCXLMRoberta(BaseModel):
         else:
             model_file = self.dir
 
-        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(vocab_file)
+        self.tokenizer = DebertaV2TokenizerFast.from_pretrained(vocab_file)
         self.model = self.load_model(model_file)
 
     def softmax_pos_prob(self, x):
@@ -536,7 +536,7 @@ class BCXLMRoberta(BaseModel):
     def train(self, train_set, dev_set):
         logging.info("Loading training set")
 
-        self.tokenizer = XLMRobertaTokenizerFast.from_pretrained(
+        self.tokenizer = DebertaV2TokenizerFast.from_pretrained(
                                                     self.settings["base_model"])
         train_generator = self.get_generator(self.settings["batch_size"],
                                              shuffle=True)
@@ -599,7 +599,7 @@ class BCXLMRoberta(BaseModel):
 
         return y_true, y_pred
 
-class XLMRBicleanerAIConfig(XLMRobertaConfig):
+class XLMRBicleanerAIConfig(DebertaV2Config):
     '''
     Bicleaner AI XLMR configuration class
     adds the config parameters for the classification layer
@@ -610,8 +610,9 @@ class XLMRBicleanerAIConfig(XLMRobertaConfig):
         self.head_hidden_size = head_hidden_size
         self.head_dropout = head_dropout
         self.head_activation = head_activation
+        self.cls_dropout = head_dropout
 
-class TFXLMRBicleanerAI(TFXLMRobertaForSequenceClassification):
+class TFXLMRBicleanerAI(TFDebertaV2ForSequenceClassification):
     '''
     Model for Bicleaner sentence-level classification tasks.
     Overwrites XLMRoberta classifiacion layer.
@@ -632,6 +633,6 @@ class TFXLMRBicleanerAI(TFXLMRobertaForSequenceClassification):
                 if 'bc_classification_head' in layers:
                     name = 'bc_classification_head'
 
-        self.classifier = BicleanerAIClassificationHead(config,
+        self.pooler = BicleanerAIClassificationHead(config,
                             name=name)
 
