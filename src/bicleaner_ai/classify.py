@@ -37,6 +37,8 @@ def argument_parser():
 
     # Options group
     groupO = parser.add_argument_group('Optional')
+    groupO.add_argument("-s", "--source_lang", type=str, help="Overwrite model config source language")
+    groupO.add_argument("-t", "--target_lang", type=str, help="Overwrite model config target language")
     groupO.add_argument("-S", "--source_tokenizer_command", type=str, help="Source language (SL) tokenizer full command")
     groupO.add_argument("-T", "--target_tokenizer_command", type=str, help="Target language (TL) tokenizer full command")
 
@@ -84,8 +86,10 @@ def load_metadata(args, parser):
         metadata_yaml["yamldir"] = yamldir
 
         # Read language pair and tokenizers
-        args.source_lang=metadata_yaml["source_lang"]
-        args.target_lang=metadata_yaml["target_lang"]
+        if not args.source_lang:
+            args.source_lang = metadata_yaml["source_lang"]
+        if not args.target_lang:
+            args.target_lang = metadata_yaml["target_lang"]
         if "source_tokenizer_command" in metadata_yaml:
             args.source_tokenizer_command=metadata_yaml["source_tokenizer_command"]
         if "target_tokenizer_command" in metadata_yaml:
