@@ -25,16 +25,14 @@ import shutil
 #Allows to load modules while inside or outside the package  
 try:
     from . import __version__
-    from .word_freqs_zipf import WordZipfFreqDist
-    from .word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from .util import *
-    from .training import build_noise, write_metadata
+    from .training import write_metadata
+    from .noise_generation import add_noise_options, setup_noise, build_noise
 except (SystemError, ImportError):
     from bicleaner_ai import __version__
-    from word_freqs_zipf import WordZipfFreqDist
-    from word_freqs_zipf_double_linked import WordZipfFreqDistDoubleLinked
     from util import *
     from training import build_noise, write_metadata
+    from noise_generation import add_noise_options, setup_noise, build_noise
 
 logging_level = 0
 
@@ -55,11 +53,6 @@ def get_arguments(argv = None):
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('--model_name', type=str, default=None, help='The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub.')
     groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start of. Only used in XLMR models, must be an XLMR instance.')
-    #groupO.add_argument('-f', '--source_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="L language gzipped list of word frequencies")
-    groupO.add_argument('-F', '--target_word_freqs', type=argparse.FileType('r'), default=None, required=False, help="R language gzipped list of word frequencies (needed for frequence based noise)")
-    groupO.add_argument('--target_tokenizer_type', choices=['word', 'char'], default='word', help='Type of tokenization for noise generation.')
-    groupO.add_argument('--block_size', type=check_positive, default=2000, help="Sentence pairs per block when apliying multiprocessing in the noise function")
-    groupO.add_argument('-p', '--processes', default=None, help="Option no longer available, please set BICLEANER_AI_THREADS environment variable")
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
     groupO.add_argument('--save_train', type=str, default=None, help="Save the generated training dataset into a file. If the file already exists the training dataset will be loaded from there.")
@@ -74,15 +67,7 @@ def get_arguments(argv = None):
     groupO.add_argument('--epochs', type=check_positive, default=None, help="Number of epochs for training. If None, default architecture value will be used.")
     groupO.add_argument('--patience', type=check_positive, default=None, help="Stop training when validation has stopped improving after PATIENCE number of epochs")
 
-    # Negative sampling options
-    groupO.add_argument('--pos_ratio', default=1, type=int, help="Ratio of positive samples used to oversample on validation and test sets")
-    groupO.add_argument('--rand_ratio', default=3, type=int, help="Ratio of negative samples misaligned randomly")
-    groupO.add_argument('--womit_ratio', default=3, type=int, help="Ratio of negative samples misaligned by randomly omitting words")
-    groupO.add_argument('--freq_ratio', default=3, type=int, help="Ratio of negative samples misaligned by replacing words by frequence (needs --target_word_freq)")
-    groupO.add_argument('--fuzzy_ratio', default=0, type=int, help="Ratio of negative samples misaligned by fuzzy matching")
-    groupO.add_argument('--neighbour_mix', default=False, type=bool, help="If use negative samples misaligned by neighbourhood")
-    groupO.add_argument('--min_omit_words', default=1, type=int, help="Minimum words to omit per sentence in omit noise")
-    groupO.add_argument('--min_freq_words', default=1, type=int, help="Minimum words to replace per sentence in freq noise")
+    add_noise_options(groupO)
 
     # Porn removal training options
     groupO.add_argument('--porn_removal_train', type=argparse.FileType('r'), help="File with training dataset for FastText classifier. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.")
@@ -110,10 +95,12 @@ def get_arguments(argv = None):
     return parser.parse_args(argv)
 
 def initialization(args):
-    if args.freq_ratio > 0 and args.target_word_freqs is None:
-        raise Exception("Frequence based noise needs target language word frequencies")
+    # initialization of noise generation related arguments
+    setup_noise(args)
+
     if args.mono_train is None and args.classifier_type != 'xlmr':
-        raise Exception("Argument --mono_train not found, required when not training XLMR classifier")
+        logging.error("Argument --mono_train not found, required when not training XLMR classifier")
+        sys.exit(1)
 
     if args.seed is not None:
         np.random.seed(args.seed)
@@ -124,17 +111,6 @@ def initialization(args):
 
     if args.gpu is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
-
-    # Warn about args.processes deprecation
-    if args.processes is not None:
-        logging.warning("--processes option is not available anymore, please use BICLEANER_AI_THREADS environment variable instead.")
-
-    # Set the number of processes from the environment variable
-    # or instead use all cores
-    if "BICLEANER_AI_THREADS" in os.environ and os.environ["BICLEANER_AI_THREADS"]:
-        args.processes = int(os.environ["BICLEANER_AI_THREADS"])
-    else:
-        args.processes = max(1, cpu_count()-1)
 
     if args.mixed_precision:
         from tensorflow.keras import mixed_precision
@@ -165,14 +141,6 @@ def initialization(args):
 def perform_training(args):
     time_start = default_timer()
     logging.debug("Starting process")
-
-    # Load word frequencies
-    #if args.source_word_freqs:
-    #    args.sl_word_freqs = WordZipfFreqDist(args.source_word_freqs)
-    if args.target_word_freqs:
-        args.tl_word_freqs = WordZipfFreqDistDoubleLinked(args.target_word_freqs)
-    else:
-        args.tl_word_freqs = None
 
     # Train porn removal classifier
     if args.porn_removal_file is not None and args.porn_removal_train is not None:
