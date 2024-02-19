@@ -54,7 +54,7 @@ def sentence_noise(i, src, trg, args, tokenizer):
     # starting with lowercase (with 50% probability)
     # This avoids the missing starting capital letter flaw where sentences
     # without it are always scored low
-    if args.freq_ratio or args.omit_ratio:
+    if args.freq_ratio or args.womit_ratio:
         generate = False
 
         # Lowercase src only, target only, both or neither randomly
