@@ -167,6 +167,8 @@ The complete list of parameters is:
 * optional arguments:
   * `-h, --help`: show this help message and exit
 * Optional:
+  * `--source_lang SOURCE_LANG`: Overwrite model config source language. (default: None)
+  * `--target_lang TARGET_LANG`: Overwrite model config target language. (default: None)
   * `-S SOURCE_TOKENIZER_COMMAND`: Source language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
   * `-T TARGET_TOKENIZER_COMMAND`: Target language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
   * `--scol SCOL`: Source sentence column (starting in 1). If `--header` is set, the expected value will be the name of the field (default: 3 if `--header` is not set else src_text)
