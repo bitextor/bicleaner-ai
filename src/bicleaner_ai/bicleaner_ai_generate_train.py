@@ -4,6 +4,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Suppress Tenssorflow logging messages unless log level is explictly set
 if 'TF_CPP_MIN_LOG_LEVEL' not in os.environ:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from timeit import default_timer
 import argparse
 import logging
 import sys
@@ -45,7 +46,10 @@ def main():
     setup_noise(args)
     logging.debug(args)
 
+    time_start = default_timer()
+
     # Generate synthetic noise
+    logging.info(f"Generating synthetic noise for {args.source_lang}-{args.target_lang}")
     filename = build_noise(args.input, args)
 
     # Save in output file
@@ -54,6 +58,10 @@ def main():
             print(line, end='')
 
     os.unlink(filename)
+
+    logging.info("Finished")
+    elapsed_time = default_timer() - time_start
+    logging.info("Elapsed time {0:.2f} s".format(elapsed_time))
 
 if __name__ == '__main__':
     import traceback
