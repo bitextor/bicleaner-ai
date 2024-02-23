@@ -41,7 +41,10 @@ def add_noise_options(parser):
 Initialization and setup of arguments related to noise generation
 '''
 def setup_noise(args):
-    if args.freq_ratio > 0 and args.target_word_freqs is None:
+    # We want to fail if no freq_words is provided and freq noise is requested (which is by default)
+    # in case validation and training are pre-generated, noise generation is skipped, so no need to fail
+    if args.freq_ratio > 0 and args.target_word_freqs is None \
+            and (not args.generated_train and not args.generated_valid):
         logging.error("Frequence based noise needs target language word frequencies. Use '-F'/'--target_word_freqs' or disable with '--freq-ratio 0'")
         sys.exit(1)
 
