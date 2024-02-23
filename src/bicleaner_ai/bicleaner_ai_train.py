@@ -47,18 +47,18 @@ def get_arguments(argv = None):
     groupM.add_argument('-s', '--source_lang', required=True, help="Source language")
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
     groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=False, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings. Not required for XLMR.")
-    groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences to train the classifier")
-    groupM.add_argument('--parallel_valid', type=argparse.FileType('r'), default=None, required=True, help="TSV file containing parallel sentences for validation")
+    groupM.add_argument('--parallel_train', type=argparse.FileType('r'), default=None, required='--generated_train' not in sys.argv, help="TSV file containing parallel sentences to train the classifier")
+    groupM.add_argument('--parallel_valid', type=argparse.FileType('r'), default=None, required='--generated_valid' not in sys.argv, help="TSV file containing parallel sentences for validation")
 
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('--model_name', type=str, default=None, help='The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub.')
     groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start of. Only used in XLMR models, must be an XLMR instance.')
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
-    groupO.add_argument('--save_train', type=str, default=None, help="Save the generated training dataset into a file. If the file already exists the training dataset will be loaded from there.")
-    groupO.add_argument('--save_valid', type=str, default=None, help="Save the generated validation dataset into a file. If the file already exists the validation dataset will be loaded from there.")
     groupO.add_argument('--distilled', action='store_true', help='Enable Knowledge Distillation training. It needs pre-built training set with raw scores from a teacher model.')
     groupO.add_argument('--seed', default=None, type=int, help="Seed for random number generation. By default, no seeed is used.")
+    groupO.add_argument('--generated_train', type=str, default=None, help="Generated training dataset. If the file already exists the training dataset will be loaded from here.")
+    groupO.add_argument('--generated_valid', type=str, default=None, help="Generated validation dataset. If the file already exists the validation dataset will be loaded from here.")
 
     # Classifier training options
     groupO.add_argument('--classifier_type', choices=model_classes.keys(), default="dec_attention", help="Neural network architecture of the classifier")
@@ -147,29 +147,29 @@ def perform_training(args):
         from hardrules.training import train_porn_removal
         train_porn_removal(args)
 
-    # If save_train is not provided or empty build new train set
+    # If generated_train is not provided or empty build new train set
     # otherwise use the prebuilt training set
-    if (args.save_train is None
-            or not os.path.isfile(args.save_train)
-            or os.stat(args.save_train).st_size == 0):
+    if (args.generated_train is None
+            or not os.path.isfile(args.generated_train)
+            or os.stat(args.generated_train).st_size == 0):
         logging.info("Building training set")
         train_sentences = build_noise(args.parallel_train, args)
-        if args.save_train is not None:
-            shutil.copyfile(train_sentences, args.save_train)
+        if args.generated_train:
+            shutil.copyfile(train_sentences, args.generated_train)
     else:
-        train_sentences = args.save_train
+        train_sentences = args.generated_train
         logging.info("Using pre-built training set: " + train_sentences)
 
     # Same for valid set
-    if (args.save_valid is None
-            or not os.path.isfile(args.save_valid)
-            or os.stat(args.save_valid).st_size == 0):
+    if (args.generated_valid is None
+            or not os.path.isfile(args.generated_valid)
+            or os.stat(args.generated_valid).st_size == 0):
         logging.info("Building validation set")
         valid_sentences = build_noise(args.parallel_valid, args)
-        if args.save_valid is not None:
-            shutil.copyfile(valid_sentences, args.save_valid)
+        if args.generated_valid:
+            shutil.copyfile(valid_sentences, args.generated_valid)
     else:
-        valid_sentences = args.save_valid
+        valid_sentences = args.generated_valid
         logging.info("Using pre-built validation set: " + valid_sentences)
     test_sentences = valid_sentences
 
@@ -186,8 +186,11 @@ def perform_training(args):
         lm_stats = train_fluency_filter(args)
     else:
         lm_stats = None
-    args.parallel_train.close()
-    args.parallel_valid.close()
+
+    if args.parallel_train:
+        args.parallel_train.close()
+    if args.parallel_valid:
+        args.parallel_valid.close()
 
     # Define the model name
     if args.model_name is None:
@@ -223,9 +226,10 @@ def perform_training(args):
 
     y_true, y_pred = classifier.train(train_sentences, valid_sentences)
 
-    if args.save_train is not None and train_sentences != args.save_train:
+    if args.generated_train and train_sentences != args.generated_train:
         os.unlink(train_sentences)
-    os.unlink(valid_sentences)
+    if args.generated_valid and valid_sentences != args.generated_valid:
+        os.unlink(valid_sentences)
     logging.info("End training")
 
     args.metadata = open(args.model_dir + '/metadata.yaml', 'w+')
