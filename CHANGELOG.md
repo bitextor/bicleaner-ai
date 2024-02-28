@@ -6,10 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased:
 ### Added:
+- New multilingual full models: `large-en-xx`, `es-xx`, `large-es-xx`.
 - Options to overwrite source or target language in model config.
+- Generate training data with separated command.
+- More logging messages during noise generation.
 
 ### Changed:
+- Huge improvements in accuracy multilingual full models.
+- Updated mutilingual full model `en-xx`.
+- Upload multilingual full models to HF.
 - Disable hardrules that need lang parameter when using multilingual model if language has not been overwritten.
+- Optional `parallel_train`, `parallel_valid` and noise generation in `bicleaner_train`.
+- Test classify full with HF model.
+
+### Fixed:
+- Always English being used in Tokenizer during noise generation.
+- Noise generation failing when `freq_noise` was disabled.
 
 ## Bicleaner AI 2.3.2:
 ### Fixed:
