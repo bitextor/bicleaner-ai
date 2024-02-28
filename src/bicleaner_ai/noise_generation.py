@@ -1,7 +1,8 @@
 from multiprocessing import Queue, Process, Value, cpu_count
-from tempfile import TemporaryFile, NamedTemporaryFile
+from tempfile import TemporaryFile, NamedTemporaryFile, mktemp
 from heapq import heappush, heappop
 from fuzzywuzzy import process, fuzz
+import zstandard
 import argparse
 import logging
 import random
@@ -147,11 +148,12 @@ def worker_process(num, src, trg, jobs_queue, output_queue, args):
             for i in range(job, min(job+args.block_size, nlines)):
                 output.extend(sentence_noise(i, src, trg, args, tokenizer))
 
-            output_file = NamedTemporaryFile('w+', delete=False)
+            output_file_name = mktemp()
+            output_file = zstandard.open(output_file_name, 'wt')
             for j in output:
                 output_file.write(j + '\n')
             output_file.close()
-            output_queue.put((job,output_file.name))
+            output_queue.put((job,output_file_name))
         else:
             logging.debug(f"Exiting worker {num}")
             break
@@ -166,7 +168,7 @@ def reduce_process(output_queue, output_file, block_size):
             nblock, filein_name = heappop(h)
             last_block += block_size
 
-            with open(filein_name, 'r') as filein:
+            with zstandard.open(filein_name, 'rt') as filein:
                 for i in filein:
                     output_file.write(i)
             os.unlink(filein_name)
@@ -186,7 +188,7 @@ def reduce_process(output_queue, output_file, block_size):
         nblock, filein_name = heappop(h)
         last_block += block_size
 
-        with open(filein_name, 'r') as filein:
+        with zstdandard.open(filein_name, 'rt') as filein:
             for i in filein:
                 output_file.write(i)
 
