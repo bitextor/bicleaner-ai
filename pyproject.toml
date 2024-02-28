@@ -27,6 +27,7 @@ dependencies = [
     "python-Levenshtein",
     "transformers==4.30.2",
     "huggingface-hub==0.15.1",
+    "zstandard",
     "psutil",
     "regex",
 ]
