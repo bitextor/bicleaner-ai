@@ -11,6 +11,7 @@ except (SystemError, ImportError):
     from util import  no_escaping
 
 class Tokenizer:
+    @classmethod
     def get_tokenizer(cls, tok_type, l='eng'):
         if tok_type == 'char':
             return CharTokenizer()
