@@ -9,7 +9,7 @@ Sentence pairs considered very noisy are scored with 0.
 
 Although a training tool (`bicleaner-ai-train`) is provided, you may want to use the available ready-to-use language packages.
 Please, use `bicleaner-ai-download` to download the latest language packages or visit the [Github releases](https://github.com/bitextor/bicleaner-ai-data/releases/latest) for lite models and [Hugging Face Hub](https://huggingface.co/bitextor) for full models since v2.0.
-Visit our [Wiki](https://github.com/bitextor/bicleaner-ai/wiki/How-to-train-your-Bicleaner-AI) for a detailed example on Bicleaner training.
+Visit our [docs](docs/TRAINING.md) for a detailed example on Bicleaner training.
 
 ## Citation
 If you find Bicleaner AI useful, please consider citing the following paper:
