@@ -138,14 +138,10 @@ def download_model(filename, url):
 
 def test_classify_lite():
     url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/lite-en-fr.tgz'
-    download_model('./en-fr-lite.tgz', url)
+    model = 'bitextor/bicleaner-ai-full-en-fr'
 
     # Create temp dir
     with TemporaryDirectory(prefix='bicleaner-ai-classify-test.') as dir_:
-        # Extract model
-        with tarfile.open('./en-fr-lite.tgz') as file_:
-            file_.extractall(dir_)
-
         # Define program arguments
         argv = [
             '--disable_hardrules',
@@ -155,7 +151,7 @@ def test_classify_lite():
             './dev.en-fr',
             #'/dev/stdout',
             dir_ + '/scores',
-            dir_ + '/en-fr',
+            model,
         ]
 
         # Read classifier output scores
