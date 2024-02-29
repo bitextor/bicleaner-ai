@@ -1,16 +1,16 @@
 # Training
 
-In case you need to train a new classifier (i.e. because it is not available in the language packs provided at [bicleaner-ai-data](https://github.com/bitextor/bicleaner-ai-data/releases/latest)), you can use `bicleaner-ai-train`.
+In case you need to train a new model (i.e. because it is not available in the language packs provided at [bicleaner-ai-data](https://github.com/bitextor/bicleaner-ai-data/releases/latest)), you can use `bicleaner-ai-train`.
 `bicleaner-ai-train` is a Python tool that allows you to train a classifier which predicts
 whether a pair of sentences are mutual translations or not and discards too noisy sentence pairs.
 
 Here we will show a quick start guide, but you can take a look at the [step by step guide](step-by-step.md) for a detailed example.
-Also, you can find a more advanced example that shows how to [train a multilingual classifier](multilingual.md).
+Also, you can find a more advanced example that shows how to [train a multilingual model](multilingual.md).
 
 ## Quick start
 
 ### Requirements
-In order to train a new classifier, you must provide:
+In order to train a new model, you must provide:
 * A clean parallel corpus. Recommended size of at least 500k sentence pairs for lite models and 200k for full models.
 * Monolingual corpus for the source and the target language (not necessary for `xlmr` classifier).
 * Gzipped list of monolingual word frequencies for the target language. You can check their format by downloading any of the available language packs.
@@ -27,8 +27,8 @@ $ cat monolingual.TL \
     | grep -v '[[:space:]]*1' \
     | gzip > wordfreq-TL.gz
 ```
-Optionally, if you want the classifier to include a porn filter, you must also provide:
-* File with training dataset for porn removal classifier. Each sentence must contain at the beginning the `\_\_label\_\_negative` or `\_\_label\_\_positive` according to FastText convention. It should be lowercased and tokenized.
+Optionally, if you want the model to include a porn filter, you must also provide:
+* File with training dataset for porn removal filter. Each sentence must contain at the beginning the `\_\_label\_\_negative` or `\_\_label\_\_positive` according to FastText convention. It should be lowercased and tokenized.
 
 ### Example
 
@@ -45,7 +45,7 @@ bicleaner-ai-train \
     --porn_removal_train porn-removal.txt.en  --porn_removal_file models/en-cs/porn-model.en \
 ```
 
-This will train a lite classifier for English-Czech using the corpus `corpus.en-cs.train`, the `corpus.en-cs.dev` as development set and the monolingual corpus `mono.en-cs` to train the vocabulary embeddings.
+This will train a lite model for English-Czech using the corpus `corpus.en-cs.train`, the `corpus.en-cs.dev` as development set and the monolingual corpus `mono.en-cs` to train the vocabulary embeddings.
 All the model files created during training, the language model files, the porn removal file, and the `metadata.yaml` will be stored in the model directory `models/en-cs`.
 
 To train full models you would need to use `--classifier\_type xlmr` and `--mono\_train` is not needed.
@@ -68,7 +68,7 @@ options:
 
 Mandatory:
   -m MODEL_DIR, --model_dir MODEL_DIR
-                        Model directory, metadata, classifier and SentencePiece models will be saved in the same directory (default: None)
+                        Model directory, metadata, classifier and SentencePiece vocabulary will be saved in the same directory (default: None)
   -s SOURCE_LANG, --source_lang SOURCE_LANG
                         Source language (default: None)
   -t TARGET_LANG, --target_lang TARGET_LANG
@@ -84,7 +84,7 @@ Options:
   --model_name MODEL_NAME
                         The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub. (default: None)
   --base_model BASE_MODEL
-                        The name of the base model to start of. Only used in XLMR models, must be an XLMR instance. (default: None)
+                        The name of the base model to start from. Only used in XLMR classifiers, must be an XLMR instance. (default: None)
   -g GPU, --gpu GPU     Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES. (default: None)
   --mixed_precision     Use mixed precision float16 for training (default: False)
   --distilled           Enable Knowledge Distillation training. It needs pre-built training set with raw scores from a teacher model. (default: False)
@@ -94,7 +94,7 @@ Options:
   --generated_valid GENERATED_VALID
                         Generated validation dataset. If the file already exists the validation dataset will be loaded from here. (default: None)
   --classifier_type {dec_attention,transformer,xlmr}
-                        Neural network architecture of the classifier (default: dec_attention)
+                        Neural network architecture for the classifier (default: dec_attention)
   --batch_size BATCH_SIZE
                         Batch size during classifier training. If None, default architecture value will be used. (default: None)
   --steps_per_epoch STEPS_PER_EPOCH
@@ -126,12 +126,12 @@ Options:
   --min_freq_words MIN_FREQ_WORDS
                         Minimum words to replace per sentence in freq noise (default: 1)
   --porn_removal_train PORN_REMOVAL_TRAIN
-                        File with training dataset for FastText classifier. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and
-                        tokenized. (default: None)
+                        File with training dataset for porn filter. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.
+                        (default: None)
   --porn_removal_test PORN_REMOVAL_TEST
-                        Test set to compute precision and accuracy of the porn removal classifier (default: None)
+                        Test set to compute precision and accuracy of the porn removal filter (default: None)
   --porn_removal_file PORN_REMOVAL_FILE
-                        Porn removal classifier output file (default: porn_removal.bin)
+                        Porn removal output file (default: porn_removal.bin)
   --porn_removal_side {sl,tl}
                         Whether the porn removal should be applied at the source or at the target language. (default: sl)
   --noisy_examples_file_sl NOISY_EXAMPLES_FILE_SL
