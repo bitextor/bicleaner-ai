@@ -43,7 +43,7 @@ def get_arguments(argv = None):
     parser = argparse.ArgumentParser(prog=os.path.basename(sys.argv[0]), formatter_class=argparse.ArgumentDefaultsHelpFormatter, description=__doc__)
 
     groupM = parser.add_argument_group("Mandatory")
-    groupM.add_argument('-m', '--model_dir', type=check_dir, required=True, help="Model directory, metadata, classifier and SentencePiece models will be saved in the same directory")
+    groupM.add_argument('-m', '--model_dir', type=check_dir, required=True, help="Model directory, metadata, classifier and SentencePiece vocabulary will be saved in the same directory")
     groupM.add_argument('-s', '--source_lang', required=True, help="Source language")
     groupM.add_argument('-t', '--target_lang', required=True, help="Target language")
     groupM.add_argument('--mono_train', type=argparse.FileType('r'), default=None, required=False, help="File containing monolingual sentences of both languages shuffled together, used to train SentencePiece embeddings. Not required for XLMR.")
@@ -52,7 +52,7 @@ def get_arguments(argv = None):
 
     groupO = parser.add_argument_group('Options')
     groupO.add_argument('--model_name', type=str, default=None, help='The name of the model. For the XLMR models it will be used as the name in Hugging Face Hub.')
-    groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start of. Only used in XLMR models, must be an XLMR instance.')
+    groupO.add_argument('--base_model', type=str, default=None, help='The name of the base model to start from. Only used in XLMR classifiers, must be an XLMR instance.')
     groupO.add_argument('-g', '--gpu', type=check_positive_or_zero, help="Which GPU use, starting from 0. Will set the CUDA_VISIBLE_DEVICES.")
     groupO.add_argument('--mixed_precision', action='store_true', default=False, help="Use mixed precision float16 for training")
     groupO.add_argument('--distilled', action='store_true', help='Enable Knowledge Distillation training. It needs pre-built training set with raw scores from a teacher model.')
@@ -60,8 +60,8 @@ def get_arguments(argv = None):
     groupO.add_argument('--generated_train', type=str, default=None, help="Generated training dataset. If the file already exists the training dataset will be loaded from here.")
     groupO.add_argument('--generated_valid', type=str, default=None, help="Generated validation dataset. If the file already exists the validation dataset will be loaded from here.")
 
-    # Classifier training options
-    groupO.add_argument('--classifier_type', choices=model_classes.keys(), default="dec_attention", help="Neural network architecture of the classifier")
+    # Model training options
+    groupO.add_argument('--classifier_type', choices=model_classes.keys(), default="dec_attention", help="Neural network architecture for the classifier")
     groupO.add_argument('--batch_size', type=check_positive, default=None, help="Batch size during classifier training. If None, default architecture value will be used.")
     groupO.add_argument('--steps_per_epoch', type=check_positive, default=None, help="Number of batch updates per epoch during training. If None, default architecture value will be used or the full dataset size.")
     groupO.add_argument('--epochs', type=check_positive, default=None, help="Number of epochs for training. If None, default architecture value will be used.")
@@ -70,9 +70,9 @@ def get_arguments(argv = None):
     add_noise_options(groupO)
 
     # Porn removal training options
-    groupO.add_argument('--porn_removal_train', type=argparse.FileType('r'), help="File with training dataset for FastText classifier. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.")
-    groupO.add_argument('--porn_removal_test', type=argparse.FileType('r'), help="Test set to compute precision and accuracy of the porn removal classifier")
-    groupO.add_argument('--porn_removal_file', type=str, default="porn_removal.bin", help="Porn removal classifier output file")
+    groupO.add_argument('--porn_removal_train', type=argparse.FileType('r'), help="File with training dataset for porn filter. Each sentence must contain at the beginning the '__label__negative' or '__label__positive' according to FastText convention. It should be lowercased and tokenized.")
+    groupO.add_argument('--porn_removal_test', type=argparse.FileType('r'), help="Test set to compute precision and accuracy of the porn removal filter")
+    groupO.add_argument('--porn_removal_file', type=str, default="porn_removal.bin", help="Porn removal output file")
     groupO.add_argument('--porn_removal_side', choices=['sl','tl'], default="sl", help="Whether the porn removal should be applied at the source or at the target language.")
 
     # LM fluency filter training options

@@ -85,7 +85,7 @@ Note that this won't transliterate the output text, it will be used only for sco
 
 
 ## Cleaning
-### Getting Started
+### Getting started
 `bicleaner-ai-classify` aims at detecting noisy sentence pairs in a parallel corpus. It
 indicates the likelihood of a pair of sentences being mutual translations (with a value near to 1) or not (with a value near to 0). Sentence pairs considered very noisy are scored with 0.
 
@@ -136,7 +136,7 @@ bicleaner-ai-classify  \
 where `--scol` and `--tcol` indicate the location of source and target sentence,
 `corpus.en-fr.tsv` the input file,
 `corpus.en-fr.classified.tsv` output file and `bitextor/bicleaner-ai-en-fr` is the HuggingFace model name.
-Each line of the new file will contain the same content as the input file, adding a column with the score given by the Bicleaner classifier.
+Each line of the new file will contain the same content as the input file, adding a column with the score given by the Bicleaner AI classifier.
 
 Note that, to use a lite model, you need to provide model path in your local file system, instead of HuggingFace model name.
 
@@ -164,7 +164,7 @@ bicleaner-ai-classify \
     bitextor/bicleaner-ai-full-en-xx
 ```
 
-### Parameters
+### Usage
 
 <details>
 <summary>Full description of the command-line parameters:</summary>
@@ -229,8 +229,8 @@ Logging:
 
 </details>
 
-## Training classifiers
-Bicleaner AI provides a command-line tool to train your own classifier, in case available models do not fit your needs.
+## Training models
+Bicleaner AI provides a command-line tool to train your own model, in case available models do not fit your needs.
 Please go to our [training documentation](docs/training) for a quick start and further details.
 
 ## Setting the number of threads

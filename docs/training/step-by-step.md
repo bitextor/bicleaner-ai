@@ -2,13 +2,13 @@
 
 ## Intro
 
-In this article we'll develop an example to illustrate the recommended way to train Bicleaner AI from scratch.
+In this article we'll develop an example to illustrate the recommended way to train a Bicleaner AI model from scratch.
 Of course you can follow your own way, but let us unveil our secrets on Bicleaner AI training
 (trust us, we have done this a zillion times before).
 
 If after reading this guide you are still having questions or needing clarification, please don't hesitate to open a new [issue](https://github.com/bitextor/bicleaner-ai/issues).
 
-Let's assume you'd like to train a Bicleaner for English-Icelandic (en-is).
+Let's assume you'd like to train a model for English-Icelandic (en-is).
 
 ## What can you train
 Bicleaner AI has mainly two types of models, lite models and full models.
@@ -42,7 +42,7 @@ If you already have all the ingredients (parallel corpus and monolingual data) b
 
 ## Starting point: a parallel corpus
 
-Good news: You can build everything needed to train Bicleaner from a single parallel corpus.
+Good news: You can build everything needed to train model from a single parallel corpus.
 
 * If you don't have monolingual data you can use each of the sides of your parallel corpus.
 
@@ -209,13 +209,13 @@ bicleaner-ai-train \
 ```
 
 #  Bicleaning a corpus:
-At this point, you probably want to try your freshly trained Bicleaner to clean an actual corpus. Just run:
+At this point, you probably want to try your freshly trained model to clean an actual corpus. Just run:
 
 ```bash
 bicleaner-ai-classify testcorpus.en-is testcorpus.en-is.classified models/en-is/metadata.yaml --scol 1 --tcol 2
 ```
 
-After running Bicleaner, you'll have a new file (`testcorpus.en-is.classified`), having the same content as the input file (`testcorpus.en-is`) plus an extra column. This new column contains the scores given by the classifier to each pair of parallel sentences. If the score is `0`, it means that the sentence was discarded by the Hardrules filter or the language model. If the score is above 0, it means that it made it to the classifier, and the closer to 1 the better is the  sentence. For most languages (and distributed language packs), we consider a sentence to be very likely a good sentence when its score is above `0.5` .
+After running `bicleaaner-ai-classify`, you'll have a new file (`testcorpus.en-is.classified`), having the same content as the input file (`testcorpus.en-is`) plus an extra column. This new column contains the scores given by the classifier to each pair of parallel sentences. If the score is `0`, it means that the sentence was discarded by the Hardrules filter or the language model. If the score is above 0, it means that it made it to the classifier, and the closer to 1 the better is the  sentence. For most languages (and distributed language packs), we consider a sentence to be very likely a good sentence when its score is above `0.5` .
 
 # Software
 
