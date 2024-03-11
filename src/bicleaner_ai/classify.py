@@ -21,6 +21,8 @@ except (ImportError, SystemError):
     from util import check_positive, check_positive_or_zero, check_positive_between_zero_and_one, logging_setup, get_model
 
 HBS_CYR = ('hbs', 'sr', 'me', 'cnr')
+# Hardrules to be disabled when using multilingual model
+MULTI_DISABLE = ("not_too_short", "length_ratio", "no_only_numbers", "no_repeated_words", "no_wrong_language")
 
 
 # Create an argument parser and add all the arguments
@@ -35,6 +37,8 @@ def argument_parser():
 
     # Options group
     groupO = parser.add_argument_group('Optional')
+    groupO.add_argument("-s", "--source_lang", type=str, help="Overwrite model config source language")
+    groupO.add_argument("-t", "--target_lang", type=str, help="Overwrite model config target language")
     groupO.add_argument("-S", "--source_tokenizer_command", type=str, help="Source language (SL) tokenizer full command")
     groupO.add_argument("-T", "--target_tokenizer_command", type=str, help="Target language (TL) tokenizer full command")
 
@@ -82,8 +86,10 @@ def load_metadata(args, parser):
         metadata_yaml["yamldir"] = yamldir
 
         # Read language pair and tokenizers
-        args.source_lang=metadata_yaml["source_lang"]
-        args.target_lang=metadata_yaml["target_lang"]
+        if not args.source_lang:
+            args.source_lang = metadata_yaml["source_lang"]
+        if not args.target_lang:
+            args.target_lang = metadata_yaml["target_lang"]
         if "source_tokenizer_command" in metadata_yaml:
             args.source_tokenizer_command=metadata_yaml["source_tokenizer_command"]
         if "target_tokenizer_command" in metadata_yaml:
@@ -99,6 +105,12 @@ def load_metadata(args, parser):
         args.clf = get_model(metadata_yaml["classifier_type"])(yamldir,
                                                 metadata_yaml["classifier_settings"])
         args.clf.load()
+
+        # Check if it is a multilingual model
+        args.multilingual = False
+        if args.source_lang in ("xx", "xxx") or args.target_lang in ("xx", "xxx") \
+                or ("multilingual" in metadata_yaml and metadata["multilingual"]):
+            args.multilingual = True
 
         if "disable_lang_ident" in metadata_yaml:
             args.disable_lang_ident = metadata_yaml["disable_lang_ident"]
@@ -144,10 +156,20 @@ def load_metadata(args, parser):
             yaml_file = args.rules_config
             args.rules_config = yaml.safe_load(args.rules_config)
             yaml_file.close()
+        else:
+            args.rules_config = {}
+
+        # Disable the language-dependant hardules when using multilingual model
+        if args.multilingual:
+            logging.warning("Using multilingual model, disabling language-dependant rules: " + ', '.join(MULTI_DISABLE))
+            for rule in MULTI_DISABLE:
+                args.rules_config[rule] = False
 
 
-        logging.debug("YAML")
+        logging.debug("Model configuration")
         logging.debug(metadata_yaml)
+        logging.debug("Hardrules configuration")
+        logging.debug(args.rules_config)
         args.metadata_yaml = metadata_yaml
         parser.set_defaults(**metadata_yaml)
     except:

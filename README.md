@@ -9,7 +9,7 @@ Sentence pairs considered very noisy are scored with 0.
 
 Although a training tool (`bicleaner-ai-train`) is provided, you may want to use the available ready-to-use language packages.
 Please, use `bicleaner-ai-download` to download the latest language packages or visit the [Github releases](https://github.com/bitextor/bicleaner-ai-data/releases/latest) for lite models and [Hugging Face Hub](https://huggingface.co/bitextor) for full models since v2.0.
-Visit our [Wiki](https://github.com/bitextor/bicleaner-ai/wiki/How-to-train-your-Bicleaner-AI) for a detailed example on Bicleaner training.
+Visit our [docs](docs/TRAINING.md) for a detailed example on Bicleaner training.
 
 ## Citation
 If you find Bicleaner AI useful, please consider citing the following paper:
@@ -152,6 +152,29 @@ Each line of the new file will contain the same content as the input file, addin
 Note that, to use a lite model, you need to provide model path in your local file system, instead of HuggingFace model name.
 
 
+#### Multilingual models
+There are multilingual full models available.
+They can work with, potentially, any language (currently only paired with English) that XLMR [supports](https://github.com/facebookresearch/fairseq/tree/main/examples/xlmr#introduction).
+
+Here is a comparison of our `en-xx` models performance on the English-Icelandic validation set:
+| model | Matthews Corr. Coef. |
+| ------ | -----: |
+| `bitextor/bicleaner-ai-full-en-is` | 85.6 |
+| `bitextor/bicleaner-ai-full-en-xx` | 87.4 |
+| `bitextor/bicleaner-ai-full-large-en-xx` | 92.4 |
+Despite not having any English-Icelandic data in the Bicleaner AI training, multilingual models can perform reasonably well on zero-shot classification.
+
+**WARNING**: multilingual models will disable hardrules that expect language parameter.
+You can, however, overwrite the language code in the model configuration with `-s`/`--source_lang` or `-t`/`--target_lang` options during classify. For example when scoring English-Icelandic data, use:
+```
+bicleaner-ai-classify \
+    --scol 1 --tcol 2 \
+    -t is \
+    corpus.en-is.tsv \
+    corpus.en-is.classified.tsv \
+    bitextor/bicleaner-ai-full-en-xx
+```
+
 ### Parameters
 The complete list of parameters is:
 
@@ -167,6 +190,8 @@ The complete list of parameters is:
 * optional arguments:
   * `-h, --help`: show this help message and exit
 * Optional:
+  * `--source_lang SOURCE_LANG`: Overwrite model config source language. (default: None)
+  * `--target_lang TARGET_LANG`: Overwrite model config target language. (default: None)
   * `-S SOURCE_TOKENIZER_COMMAND`: Source language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
   * `-T TARGET_TOKENIZER_COMMAND`: Target language tokenizer full command (including flags if needed). If not given, Sacremoses tokenizer is used (with `escape=False` option).
   * `--scol SCOL`: Source sentence column (starting in 1). If `--header` is set, the expected value will be the name of the field (default: 3 if `--header` is not set else src_text)
