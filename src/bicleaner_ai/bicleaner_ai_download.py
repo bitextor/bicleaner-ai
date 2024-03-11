@@ -38,7 +38,7 @@ def main():
                         help='Source language')
     parser.add_argument('trg_lang', type=str,
                         help='Target language')
-    parser.add_argument('model_type', type=str, choices=['full', 'lite'],
+    parser.add_argument('model_type', type=str, choices=['full', 'full-large', 'lite'],
                         help='Download lite or full model')
     parser.add_argument('download_path', type=str, nargs='?',
                         help='Path to download the model (only for old Github models)')
@@ -53,9 +53,9 @@ def main():
     if not args.download_path and args.model_type == 'lite':
         raise Exception("Lite models need a download path")
 
-    if args.model_type == 'full':
-        #TODO fallback to github if does not exist?
-        name = f'bitextor/bicleaner-ai-full-{args.src_lang}-{args.trg_lang}'
+    if args.model_type.startswith('full'):
+        large = "-large" if args.model_type == 'full-large' else ""
+        name = f'bitextor/bicleaner-ai-full{large}-{args.src_lang}-{args.trg_lang}'
         logging.info(f'Downloading {name}')
         try:
             if not args.download_path:
