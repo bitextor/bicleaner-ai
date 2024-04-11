@@ -144,14 +144,7 @@ Note that, to use a lite model, you need to provide model path in your local fil
 #### Multilingual models
 There are multilingual full models available.
 They can work with, potentially, any language (currently only paired with English) that XLMR [supports](https://github.com/facebookresearch/fairseq/tree/main/examples/xlmr#introduction).
-
-Here is a comparison of our `en-xx` models performance on the English-Icelandic validation set:
-| model | Matthews Corr. Coef. |
-| ------ | -----: |
-| `bitextor/bicleaner-ai-full-en-is` | 85.6 |
-| `bitextor/bicleaner-ai-full-en-xx` | 87.4 |
-| `bitextor/bicleaner-ai-full-large-en-xx` | 92.4 |
-Despite not having any English-Icelandic data in the Bicleaner AI training, multilingual models can perform reasonably well on zero-shot classification.
+To see a further explaination on how to train a multilingual model or how our models perform, take a look [here](docs/training/multilingual.md) and [here](docs/training/multilingual.md#performance).
 
 **WARNING**: multilingual models will disable hardrules that expect language parameter.
 You can, however, overwrite the language code in the model configuration with `-s`/`--source_lang` or `-t`/`--target_lang` options during classify. For example when scoring English-Icelandic data, use:
