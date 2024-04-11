@@ -36,33 +36,24 @@ The use of XLMRoberta and 1:10 positive to negative ratio were inspired in the w
 ## Installation & Requirements
 - Python >= 3.8
 - PIP >= 23.0
-- TensorFlow >= 2.6.5
 - CUDA >=11.2 (for training and inference with full models)
 
 Bicleaner AI is written in Python and can be installed using `pip`.
 It also requires the [KenLM](https://github.com/kpu/kenlm) Python bindings with support for 7-gram language models.
-You can easily install it by running the following commands:
+Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `cyhunspell` to be installed manually.
+You can easily install all the requirements by running the following commands:
 
 ```bash
-pip install bicleaner-ai
+pip install bicleaner-ai git+https://github.com/MSeal/cython_hunspell@2.0.3
 pip install --config-settings="--build-option=--max_order=7" https://github.com/kpu/kenlm/archive/master.zip
 ```
-
-Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `python-dev` and `libhunspell-dev`:
-```bash
-sudo apt install python-dev libhunspell-dev
-```
-
-Hunspell dictionaries used by default are automatically installed.
-If you need to change default configuration for language identification, see https://github.com/mbanon/fastspell#configuration.
 
 After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-classify`, `bicleaner-ai-download`) will be located in your `python/installation/prefix/bin` directory. This is usually `$HOME/.local/bin` or `/usr/local/bin/`.
 
 ### TensorFlow
-TensorFlow 2 will be installed as a dependency and [GPU support](https://www.tensorflow.org/install/gpu) is required for training.
-`pip` will install latest TensorFlow but older versions `>=2.6.5` are supported and can be installed if your machine does not meet TensorFlow CUDA requirements.
+TensorFlow 2 will be installed as a dependency and GPU support is required for training.
+`pip` will install latest TensorFlow supported version, but older versions `>=2.6.5` are supported and can be installed if your machine does not meet TensorFlow CUDA requirements.
 See [this](https://www.tensorflow.org/install/source#gpu) table for the CUDA and TensorFlow versions compatibility.
-But current allowed versions only supoport **CUDA 11.2**.
 In case you want a different TensorFlow version, you can downgrade using:
 ```bash
 pip install tensorflow==2.6.5
