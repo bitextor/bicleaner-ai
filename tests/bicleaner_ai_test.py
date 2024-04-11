@@ -138,10 +138,15 @@ def download_model(filename, url):
 
 def test_classify_lite():
     url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/lite-en-fr.tgz'
-    model = 'bitextor/bicleaner-ai-full-en-fr'
+    modelfile = './en-fr-lite.tgz'
+    download_model(modelfile, url)
 
     # Create temp dir
     with TemporaryDirectory(prefix='bicleaner-ai-classify-test.') as dir_:
+        # Extract model
+        with tarfile.open(modelfile) as file_:
+            file_.extractall(dir_)
+
         # Define program arguments
         argv = [
             '--disable_hardrules',
@@ -151,7 +156,7 @@ def test_classify_lite():
             './dev.en-fr',
             #'/dev/stdout',
             dir_ + '/scores',
-            model,
+            dir_ + '/en-fr',
         ]
 
         # Read classifier output scores
@@ -183,25 +188,20 @@ def test_classify_lite():
 
 
 def test_classify_full():
-    url = 'https://github.com/bitextor/bicleaner-ai-data/releases/download/v1.0/full-en-fr.tgz'
-    download_model('./en-fr-full.tgz', url)
+    model = 'bitextor/bicleaner-ai-full-en-fr'
 
     # Create temp dir
     with TemporaryDirectory(prefix='bicleaner-ai-classify-test.') as dir_:
-        # Extract model
-        with tarfile.open('./en-fr-full.tgz') as file_:
-            file_.extractall(dir_)
-
         # Define program arguments
         argv = [
             '--disable_hardrules',
             '--scol', '1',
             '--tcol', '2',
             '--score_only',
-            './test.en-fr',
+            './dev.en-fr',
             #'/dev/stdout',
             dir_ + '/scores',
-            dir_ + '/en-fr',
+            model,
         ]
 
         # Read classifier output scores
@@ -223,7 +223,7 @@ def test_classify_full():
 
         # Test normal output
         scores = read_scores(dir_ + '/scores')
-        assert scores == [0.565, 0.985, 0.018, 0.695, 0.932, 0.928, 0.967, 0.956, 0.747, 0.464]
+        assert scores == [0.675, 0.999, 0.005, 0.863, 0.918, 0.999, 0.940, 0.950, 0.999, 0.723]
 
         # Run classifier with calibrated option
         argv.insert(0, '--calibrated')
@@ -233,7 +233,7 @@ def test_classify_full():
 
         # Test calibrated output
         scores = read_scores(dir_ + '/scores')
-        assert scores == [0.837, 0.993, 0.065, 0.934, 0.989, 0.989, 0.992, 0.991, 0.955, 0.699]
+        assert scores == [0.595, 0.666, 0.440, 0.637, 0.649, 0.666, 0.653, 0.655, 0.666, 0.606]
 
         # Run classifier with calibrated option
         argv[0] = '--raw_output'
@@ -243,13 +243,15 @@ def test_classify_full():
 
         # Test calibrated output
         scores = read_scores(dir_ + '/scores', tabs=True)
-        assert scores == [(-0.302, -0.039),
-                          (-2.280, 1.922),
-                          (1.915, -2.087),
-                          (-0.612, 0.210),
-                          (-1.545, 1.079),
-                          (-1.415, 1.144),
-                          (-1.917, 1.472),
-                          (-1.773, 1.312),
-                          (-0.743, 0.340),
-                          (-0.079, -0.222),]
+        assert scores == [(-0.381, 0.351),
+                          (-3.303, 3.428),
+                          (2.714, -2.618),
+                          (-0.885, 0.953),
+                          (-1.167, 1.243),
+                          (-3.524, 3.697),
+                          (-1.355, 1.401),
+                          (-1.445, 1.492),
+                          (-3.293, 3.596),
+                          (-0.432, 0.530),
+                         ]
+
