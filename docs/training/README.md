@@ -34,21 +34,23 @@ Optionally, if you want the model to include a porn filter, you must also provid
 
 ```bash
 bicleaner-ai-train \
-    --parallel_train corpus.en-cs.train \
-    --parallel_dev corpus.en-cs.dev \
+    --parallel_train corpus.en-cs \
+    --parallel_dev dev.en-cs \
     --mono_train mono.en-cs \
     -m models/en-cs \
     -s en \
     -t cs \
     -F wordfreqs-cs.gz \
     --lm_file_sl models/en-cs/lm.en  --lm_file_tl models/en-cs/lm.cs \
-    --porn_removal_train porn-removal.txt.en  --porn_removal_file models/en-cs/porn-model.en \
+    --porn_removal_train porn-removal.txt.en  --porn_removal_file models/en-cs/porn-model.en
 ```
 
 This will train a lite model for English-Czech using the corpus `corpus.en-cs.train`, the `corpus.en-cs.dev` as development set and the monolingual corpus `mono.en-cs` to train the vocabulary embeddings.
 All the model files created during training, the language model files, the porn removal file, and the `metadata.yaml` will be stored in the model directory `models/en-cs`.
 
 To train full models you would need to use `--classifier\_type xlmr` and `--mono\_train` is not needed.
+
+Note that, despite `-F`/`--target\_freq\_words` is not 100% mandatory, it is still required if you do not disable frequency based noise with `--freq\_ratio 0`, which is enabled by default.
 
 ## Usage
 <details>
@@ -164,14 +166,50 @@ Logging:
 </details>
 
 
+## Store generated training data
+Bicleaner AI generates its own training (as well as validation) data from the parallel data provided, as explained [below](#synthetic-noise).
+Using `bicleaner-ai-train` as shown in the above [exampe](#example), will generate training data for you.
+But, if you want to save it for further inspection, or to run again the training in case it fails, you can provide `--generated\_train FILE` and `--generated\_valid FILE`.
+If provided files are empty or do not exist, Bicleaner AI will generate the training and save it in those files.
+If the files already exist, generation will be skipped and the data provided will be used.
+
+Additionally, the data generation procedure can be run separatedly if needed, using `bicleaner-ai-generate-train` command.
+Which has the same parameters as `bicleaner-ai-train` for data generation.
+
+Here there is an example of data generation and further training:
+```
+bicleaner-ai-generate-train \
+    -s en \
+    -t cs \
+    -F wordfreqs-cs.gz \
+    corpus.en-cs train.en-cs
+
+bicleaner-ai-generate-train \
+    -s en \
+    -t cs \
+    -F wordfreqs-cs.gz \
+    dev.en-cs valid.en-cs
+
+bicleaner-ai-train \
+    --generated_train train.en-cs \
+    --generated_valid valid.en-cs \
+    --mono_train mono.en-cs \
+    -m models/en-cs \
+    -s en \
+    -t cs \
+    --lm_file_sl models/en-cs/lm.en  --lm_file_tl models/en-cs/lm.cs \
+    --porn_removal_train porn-removal.txt.en  --porn_removal_file models/en-cs/porn-model.en
+```
+
+
 ## Synthetic noise
 Bicleaner AI scoring consists of a binary classifier.
 That needs positive and negative samples for training.
 To achieve this, provided parallel data will be used as positive samples, and negative samples will be generated from the parallel sentences applying synthetic noise.
 For each parallel sentence, several negative samples will be generated from it.
-Tyipically generating a 10 to 1 or 9 to 1 ratio.
+Tyipically generating a 10 to 1, or 9 to 1 ratio.
 Having many counterparts for each parallel sentence, is very important for the classifier.
-That way, it will be able to learn that, the target sentence for example, even if it looks similar to a possible translation of the source sentence, it should be classified as not parallel if it has miissing parts.
+That way, it will be able to learn that, the target sentence for example, even if it looks similar to a possible translation of the source sentence, it should be classified as not parallel if it has missing parts.
 
 For a description of each synthetic noise generation parameters, see: `rand\_ratio`. `womit\_ratio`, `freq\_ratio`, `fuzzy\_ratio` and `neighbour\_mix` in [](#usage).
 
