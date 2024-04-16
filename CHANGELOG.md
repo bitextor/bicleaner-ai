@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compress noise generation intermediate files.
 - Multilingual models training documentation.
 - Show a warning when no GPU/TPU has been detected.
+- Show a warning if some layers do not correctly.
 
 ### Changed:
 - Huge improvements in accuracy multilingual full models.

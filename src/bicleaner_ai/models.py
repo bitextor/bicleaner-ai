@@ -474,15 +474,26 @@ class BCXLMRoberta(BaseModel):
                 batch_size=batch_size,
                 maxlen=self.settings["maxlen"])
 
-    def load_model(self, model_file):
+    def load_model(self, model_file, train=False):
         settings = self.settings
 
-        tf_model = TFXLMRBicleanerAI.from_pretrained(
-                        model_file,
-                        num_labels=settings["n_classes"],
-                        head_hidden_size=settings["n_hidden"],
-                        head_dropout=settings["dropout"],
-                        head_activation=settings["activation"])
+        tf_model, loading_info = TFXLMRBicleanerAI.from_pretrained(
+                model_file,
+                num_labels=settings["n_classes"],
+                head_hidden_size=settings["n_hidden"],
+                head_dropout=settings["dropout"],
+                head_activation=settings["activation"],
+                output_loading_info=True)
+
+        logging.debug(loading_info)
+
+        # Warn if layers do not load correctly (might be a bug)
+        # only check missng keys when inference, for training is expected
+        if loading_info["unexpected_keys"] or loading_info["mismatched_keys"] \
+                or (loading_info["missing_keys"] and not train):
+            logging.warning("Some layers were not initialized when loading model file. "
+                            "Please check that the model has been downloaded correctly "
+                            "or report this error if persists after checking.")
 
         return tf_model
 
@@ -558,7 +569,7 @@ class BCXLMRoberta(BaseModel):
         strategy = tf.distribute.MirroredStrategy()
         num_devices = strategy.num_replicas_in_sync
         with strategy.scope():
-            self.model = self.load_model(self.settings["base_model"])
+            self.model = self.load_model(self.settings["base_model"], train=True)
             self.model.compile(optimizer=self.settings["optimizer"],
                                loss=SparseCategoricalCrossentropy(
                                         from_logits=True),
