@@ -5,11 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased:
+
+## Bicleaner AI 3.0.0:
 ### Added:
 - New multilingual full models: `large-en-xx`, `es-xx`, `large-es-xx`.
 - Options to overwrite source or target language in model config.
 - Generate training data with separated command.
 - More logging messages during noise generation.
+- Compress noise generation intermediate files.
+- Multilingual models training documentation.
+- Show a warning when no GPU/TPU has been detected.
 
 ### Changed:
 - Huge improvements in accuracy multilingual full models.
@@ -18,10 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disable hardrules that need lang parameter when using multilingual model if language has not been overwritten.
 - Optional `parallel_train`, `parallel_valid` and noise generation in `bicleaner_train`.
 - Test classify full with HF model.
+- Re-organize documentation.
+- Updated Tensorflow.
+- Support for Python 3.11.
 
 ### Fixed:
 - Always English being used in Tokenizer during noise generation.
 - Noise generation failing when `freq_noise` was disabled.
+- Accidentally deleting generated valid file at the end of training.
 
 ## Bicleaner AI 2.3.2:
 ### Fixed:
