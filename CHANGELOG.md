@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-organize documentation.
 - Updated Tensorflow.
 - Support for Python 3.11.
+- Updated Transformers to 4.36.
 
 ### Fixed:
 - Always English being used in Tokenizer during noise generation.
