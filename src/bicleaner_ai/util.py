@@ -114,6 +114,13 @@ def logging_setup(args = None):
         import tensorflow as tf
         tf.get_logger().setLevel('ERROR')
 
+
+def check_gpu():
+    import tensorflow as tf
+    devices = tf.config.list_physical_devices('GPU') + tf.config.list_physical_devices('TPU')
+    if not devices:
+        logging.warning("No GPU or TPU was detected. Running on CPU will be slow.")
+
 def shuffle_file(input: typing.TextIO, output: typing.TextIO):
     offsets=[]
     with TemporaryFile("w+") as temp:

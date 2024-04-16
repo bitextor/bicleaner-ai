@@ -21,10 +21,10 @@ import regex
 #Allows to load modules while inside or outside the package
 try:
     from .classify import classify, argument_parser, load_metadata
-    from .util import logging_setup
+    from .util import logging_setup, check_gpu
 except (ImportError, SystemError):
     from classify import classify, argument_parser, load_metadata
-    from util import logging_setup
+    from util import logging_setup, check_gpu
 
 logging_level = 0
 
@@ -89,6 +89,8 @@ def initialization(argv = None):
             logging.error(
                     f"Model {args.model} not found at HF Hub. If the model is private use --auth_token option.")
         raise FileNotFoundError(f"model {args.metadata} no such file")
+
+    check_gpu()
 
     # Load metadata YAML
     args = load_metadata(args, parser)
