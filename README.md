@@ -15,7 +15,7 @@ If you find Bicleaner AI useful, please consider [citing us](#citation).
 
 ## What is New?
 ### v3.0.0 Improving Multilinguality!
-New improved multilingual models for zero-shot classification.
+New improved [multilingual models](#multilingual-models) for zero-shot classification.
 
 <details>
 <summary>Previous news</summary>
@@ -133,7 +133,7 @@ Note that, to use a lite model, you need to provide model path in your local fil
 
 
 #### Multilingual models
-There are multilingual full models available.
+There are multilingual full models [available](https://huggingface.co/models?other=bicleaner-ai&search=xx).
 They can work with, potentially, any language (currently only paired with English) that XLMR [supports](https://github.com/facebookresearch/fairseq/tree/main/examples/xlmr#introduction).
 To see a further explaination on how to train a multilingual model or how our models perform, take a look [here](docs/training/multilingual.md) and [here](docs/training/multilingual.md#performance).
 
