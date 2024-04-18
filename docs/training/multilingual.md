@@ -74,10 +74,11 @@ To see an example usage of the classify command, go to the [README](../README.md
 ## Performance
 Here is a comparison of an experiment with our `en-xx` models, measuring performance on the English-Icelandic validation set:
 | model | Matthews Corr. Coef. |
-| ------ | -----: |
+| ------ | :-----: |
 | `bitextor/bicleaner-ai-full-en-is` | 85.6 |
 | `bitextor/bicleaner-ai-full-en-xx` | 87.4 |
 | `bitextor/bicleaner-ai-full-large-en-xx` | 92.4 |
+
 Despite not having any English-Icelandic data in the Bicleaner AI training, multilingual models can perform reasonably well on zero-shot classification.
 
 **NOTE**: this an example of a multilingual model not containing English-Icelandic data, our publicly available model does contain English-Icelandic though.
