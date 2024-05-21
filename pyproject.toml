@@ -60,6 +60,7 @@ bicleaner-ai-classify = "bicleaner_ai.bicleaner_ai_classifier:main"
 bicleaner-ai-download = "bicleaner_ai.bicleaner_ai_download:main"
 bicleaner-ai-download-hf = "bicleaner_ai.bicleaner_ai_download_hf:main"
 bicleaner-ai-generate-train = "bicleaner_ai.bicleaner_ai_generate_train:main"
+bicleaner-ai-sample = "bicleaner_ai.bicleaner_ai_sample:main"
 
 [project_urls]
 "Bicleaner on GitHub" = "https://github.com/bitextor/bicleaner"
