@@ -14,7 +14,7 @@ requires-python = ">=3.8"
 dependencies = [
     "scikit-learn>=0.22.1",
     "PyYAML>=5.1.2",
-    "numpy",
+    "numpy<2",
     "pytest",
     "toolwrapper",
     "joblib",
