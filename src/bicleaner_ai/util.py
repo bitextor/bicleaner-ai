@@ -115,11 +115,19 @@ def logging_setup(args = None):
         tf.get_logger().setLevel('ERROR')
 
 
-def check_gpu():
+def check_gpu(require_gpus: bool):
     import tensorflow as tf
     devices = tf.config.list_physical_devices('GPU') + tf.config.list_physical_devices('TPU')
     if not devices:
-        logging.warning("No GPU or TPU was detected. Running on CPU will be slow.")
+        if require_gpus:
+            # Exit with a 75 EX_TEMPFAIL, which indicates a temporary error. GPUs can
+            # become unavailable in the cloud, and 75 indicates that the task can be
+            # retried.
+            logging.error("No GPU or TPU detected and --require_gpu was specified. Exiting with a EX_TEMPFAIL (75)")
+            sys.exit(75)
+        else:
+            logging.warning("No GPU or TPU was detected. Running on CPU will be slow.")
+
 
 def shuffle_file(input: typing.TextIO, output: typing.TextIO):
     offsets=[]
