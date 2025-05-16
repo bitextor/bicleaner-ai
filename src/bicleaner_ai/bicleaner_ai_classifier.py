@@ -90,7 +90,7 @@ def initialization(argv = None):
                     f"Model {args.model} not found at HF Hub. If the model is private use --auth_token option.")
         raise FileNotFoundError(f"model {args.metadata} no such file")
 
-    check_gpu(args.require_gpus)
+    check_gpu(args.require_gpu)
 
     # Load metadata YAML
     args = load_metadata(args, parser)

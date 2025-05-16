@@ -115,11 +115,11 @@ def logging_setup(args = None):
         tf.get_logger().setLevel('ERROR')
 
 
-def check_gpu(require_gpus: bool):
+def check_gpu(require_gpu: bool):
     import tensorflow as tf
     devices = tf.config.list_physical_devices('GPU') + tf.config.list_physical_devices('TPU')
     if not devices:
-        if require_gpus:
+        if require_gpu:
             # Exit with a 75 EX_TEMPFAIL, which indicates a temporary error. GPUs can
             # become unavailable in the cloud, and 75 indicates that the task can be
             # retried.
