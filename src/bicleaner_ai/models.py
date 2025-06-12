@@ -646,3 +646,13 @@ class TFXLMRBicleanerAI(TFXLMRobertaForSequenceClassification):
         self.classifier = BicleanerAIClassificationHead(config,
                             name=name)
 
+    def build(self, input_shape=None):
+        if self.built:
+            return
+        self.built = True
+        if getattr(self, "roberta", None) is not None:
+            with tf.name_scope(self.roberta.name):
+                self.roberta.build(None)
+        if getattr(self, "classifier", None) is not None:
+            with tf.name_scope(self.classifier.name):
+                self.classifier.build(None)

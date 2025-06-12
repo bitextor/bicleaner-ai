@@ -88,6 +88,7 @@ class BicleanerAIClassificationHead(layers.Layer):
             kernel_initializer=get_initializer(config.initializer_range),
             name="out_proj"
         )
+        self.config = config
 
     def call(self, features, training=False):
         x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
@@ -96,3 +97,20 @@ class BicleanerAIClassificationHead(layers.Layer):
         x = self.dropout(x, training=training)
         x = self.out_proj(x)
         return x
+
+    def build(self, input_shape=None):
+        if self.built:
+            return
+        self.built = True
+        if getattr(self, "dense", None) is not None:
+            with tf.name_scope(self.dense.name):
+                # This was failing because our dense layer last input dimension is
+                # actually config.hidden_size and not config.head_hidden_size
+                # self.hidden_size is the original parameter and is 768, just like the last XLMR state
+                # we use a different hidden size with config.head_hidden_size (typically 2048)
+                # so even if we use config.head_hidden_size as the number of neurones in self.dense
+                # the shape of dense is (self.head_hidden_size,self.hidden_size) (2048,768)
+                self.dense.build([None, None, self.config.hidden_size])
+        if getattr(self, "out_proj", None) is not None:
+            with tf.name_scope(self.out_proj.name):
+                self.out_proj.build([None, None, self.config.head_hidden_size])
