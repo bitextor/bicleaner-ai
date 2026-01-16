@@ -1,6 +1,6 @@
 [project]
 name = "bicleaner-ai"
-version = "3.3.0"
+version = "3.3.1"
 license = {file = "LICENSE"}
 authors = [
     { "name" = "Prompsit Language Engineering", "email" = "info@prompsit.com" }
@@ -19,7 +19,7 @@ dependencies = [
     "toolwrapper",
     "joblib",
     "sacremoses",
-    "bicleaner-hardrules==2.10.6",
+    "bicleaner-hardrules==2.10.8",
     "sentencepiece",
     "protobuf==3.20.3",
     "tensorflow>=2.6.5,<2.16",
@@ -27,7 +27,7 @@ dependencies = [
     "fuzzywuzzy",
     "python-Levenshtein",
     "transformers==4.52.4",
-    "huggingface-hub>=0.30,<0.31",
+    "huggingface-hub>=0.30,<1",
     "zstandard",
     "psutil",
     "regex",
