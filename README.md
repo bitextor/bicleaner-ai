@@ -47,14 +47,14 @@ Bicleaner AI is written in Python and can be installed using `pip`.
 ```
 pip install bicleaner-ai
 ```
-Note this installation will need `--disable_hardrules` option when running `bicleaner-ai-classify`, otherwise install [hardrules](####hardrules) dependency.
+Note this installation will need `--disable_hardrules` option when running `bicleaner-ai-classify`, otherwise install [hardrules](#hardrules) dependency.
 
 ### Optional features
 Since version 3.4 Hardrules and training features are now optional.
 If you only use Bicleaner AI classifier and disabled hardrules, you can skip optional dependencies.
 
 #### All dependencies
-To install all dependencies, just as it was installed before version 3.4, follow [Hardrules](###hardrules) steps previous to installation and then install Bicleaner AI with
+To install all dependencies, just as it was installed before version 3.4, follow [Hardrules](#hardrules) steps previous to installation and then install Bicleaner AI with
 ```
 bicleaner-ai[all]
 ```
