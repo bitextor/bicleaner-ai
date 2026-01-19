@@ -1,6 +1,6 @@
 [project]
 name = "bicleaner-ai"
-version = "3.3.1"
+version = "3.4"
 license = {file = "LICENSE"}
 authors = [
     { "name" = "Prompsit Language Engineering", "email" = "info@prompsit.com" }
@@ -17,19 +17,12 @@ dependencies = [
     "numpy<2",
     "pytest",
     "toolwrapper",
-    "joblib",
-    "sacremoses",
-    "bicleaner-hardrules==2.10.8",
     "sentencepiece",
     "protobuf==3.20.3",
     "tensorflow>=2.6.5,<2.16",
     "bicleaner-ai-glove==0.2.1",
-    "fuzzywuzzy",
-    "python-Levenshtein",
     "transformers==4.52.4",
     "huggingface-hub>=0.30,<1",
-    "zstandard",
-    "psutil",
     "regex",
 ]
 classifiers = [
@@ -46,6 +39,14 @@ classifiers = [
 
 [project.optional-dependencies]
 transliterate = [ "cyrtranslit==1.1" ]
+hardrules = [ "bicleaner-hardrules==2.10.8" ]
+train = [
+    "sacremoses",
+    "fuzzywuzzy",
+    "python-Levenshtein",
+    "zstandard",
+]
+all = ["bicleaner-ai[transliterate,hardrules,train]"]
 
 [build-system]
 requires = [

@@ -1,11 +1,9 @@
-from hardrules.hardrules import Hardrules
 from multiprocessing import cpu_count
 from tempfile import gettempdir
 import tensorflow as tf
 import numpy as np
 import traceback
 import argparse
-import fasttext
 import logging
 import yaml
 import sys
@@ -134,6 +132,12 @@ def load_metadata(args, parser):
                 logging.warning("Porn removal not present in metadata, disabling")
             else:
                 try:
+                    import fasttext
+                except ImportError as e:
+                    raise ImportError("Could not find fasttext dependency. "
+                            "Please install bicleaner-ai[hardrules] dependency "
+                            "or use --disable_hardrules option.") from e
+                try:
                     args.porn_removal = fasttext.load_model(os.path.join(yamldir, metadata_yaml['porn_removal_file']))
                 except:
                     args.porn_removal = fasttext.load_model(args.metadata_yaml['porn_removal_file'])
@@ -218,6 +222,12 @@ def classify(args, input, output):
     if args.disable_hardrules:
         hardrules = None
     else:
+        try:
+            from hardrules.hardrules import Hardrules
+        except ImportError as e:
+            raise ImportError("Could not find bicleaner-hardrules dependency. "
+                    "Please install bicleaner-ai[hardrules] dependency "
+                    "or use --disable_hardrules option.") from e
         hardrules = Hardrules(args)
 
     # Process input and output headers

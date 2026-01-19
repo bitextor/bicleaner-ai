@@ -14,6 +14,10 @@ Visit our [docs](docs/TRAINING.md) for a detailed example on Bicleaner training.
 If you find Bicleaner AI useful, please consider [citing us](#citation).
 
 ## What is New?
+### v3.4 Hardrules is now optional
+Bicleaner Hardrules package is now optional and training dependencies are also optional.
+Please see below under installation options on how to proceed.
+
 ### v3.0.0 Improving Multilinguality!
 New improved [multilingual models](#multilingual-models) for zero-shot classification.
 
@@ -38,14 +42,47 @@ The use of XLMRoberta and 1:10 positive to negative ratio were inspired in the w
 - PIP >= 23.0
 - CUDA >=11.2 (for training and inference with full models)
 
+### Minimal installation
 Bicleaner AI is written in Python and can be installed using `pip`.
-It also requires the [KenLM](https://github.com/kpu/kenlm) Python bindings with support for 7-gram language models.
-Hardrules uses [FastSpell](https://github.com/mbanon/fastspell) that requires `cyhunspell` to be installed manually.
-You can easily install all the requirements by running the following commands:
+```
+pip install bicleaner-ai
+```
+Note this installation will need `--disable_hardrules` option when running `bicleaner-ai-classify`, otherwise install [hardrules](####hardrules) dependency.
+
+### Optional features
+Since version 3.4 Hardrules and training features are now optional.
+If you only use Bicleaner AI classifier and disabled hardrules, you can skip optional dependencies.
+
+#### All dependencies
+To install all dependencies, just as it was installed before version 3.4, follow [Hardrules](###hardrules) steps previous to installation and then install Bicleaner AI with
+```
+bicleaner-ai[all]
+```
+
+#### Hardrules
+If you need Bicleaner Hardrules, or want to use Bicleaner AI default options as it was before 3.4, install `hardrules` feature.
+It also requires the  Python bindings with support for 7-gram language models.
+Hardrules uses [KenLM](https://github.com/kpu/kenlm) and [FastSpell](https://github.com/mbanon/fastspell) that requires `cyhunspell` to be installed manually.
+You can install all the requirements by running the following commands:
 
 ```bash
-pip install bicleaner-ai git+https://github.com/MSeal/cython_hunspell@2.0.3
+sudo apt install python3-dev build-essential autoconf autopoint libtool
+pip install git+https://github.com/MSeal/cython_hunspell@2.0.3
 pip install --config-settings="--build-option=--max_order=7" https://github.com/kpu/kenlm/archive/master.zip
+pip install bicleaner-ai[hardrules]
+```
+
+#### Serbo-Croatian transliteration
+For Serbo-Croatian languages, models work better with transliteration. To be able score transliterated text, install optional dependency:
+```
+pip install bicleaner-ai[transliterate]
+```
+Note that this won't transliterate the output text, it will be used only for scoring.
+
+#### Train
+If you want to train models please install `train` dependency
+```
+pip install bicleaner-ai[train]
 ```
 
 After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-classify`, `bicleaner-ai-download`) will be located in your `python/installation/prefix/bin` directory. This is usually `$HOME/.local/bin` or `/usr/local/bin/`.
@@ -65,14 +102,6 @@ For example:
 TF_CPP_MIN_LOG_LEVEL=0 bicleaner-ai-classify
 ```
 **WARNING**: If you are experiencing slow downs because Bicleaner AI is not running in the GPU, you should check those logs to see if TensorFlow is loading all the libraries correctly.
-
-
-### Optional requirements
-For Serbo-Croatian languages, models work better with transliteration. To be able score transliterated text, install optional dependency:
-```
-pip install bicleaner-ai[transliterate]
-```
-Note that this won't transliterate the output text, it will be used only for scoring.
 
 
 ## Cleaning
