@@ -15,7 +15,7 @@ If you find Bicleaner AI useful, please consider [citing us](#citation).
 
 ## What is New?
 ### v3.4 Hardrules is now optional
-Bicleaner Hardrules package is now optional and training dependencies are also optional.
+Bicleaner Hardrules package is now optional and training features are also optional.
 Please see below under installation options on how to proceed.
 
 ### v3.0.0 Improving Multilinguality!
@@ -47,14 +47,14 @@ Bicleaner AI is written in Python and can be installed using `pip`.
 ```
 pip install bicleaner-ai
 ```
-Note this installation will need `--disable_hardrules` option when running `bicleaner-ai-classify`, otherwise install [hardrules](#hardrules) dependency.
+Note this installation will need `--disable_hardrules` option when running `bicleaner-ai-classify`, otherwise install [hardrules](#hardrules) feature.
 
 ### Optional features
 Since version 3.4 Hardrules and training features are now optional.
-If you only use Bicleaner AI classifier and disabled hardrules, you can skip optional dependencies.
+If you only use Bicleaner AI classifier and disabled hardrules, you can skip optional features.
 
-#### All dependencies
-To install all dependencies, just as it was installed before version 3.4, follow [Hardrules](#hardrules) steps previous to installation and then install Bicleaner AI with
+#### All features
+To install all features, just as it was installed before version 3.4, follow [Hardrules](#hardrules) steps previous to installation and then install Bicleaner AI with
 ```
 bicleaner-ai[all]
 ```
@@ -73,14 +73,14 @@ pip install bicleaner-ai[hardrules]
 ```
 
 #### Serbo-Croatian transliteration
-For Serbo-Croatian languages, models work better with transliteration. To be able score transliterated text, install optional dependency:
+For Serbo-Croatian languages, models work better with transliteration. To be able score transliterated text, install optional feature:
 ```
 pip install bicleaner-ai[transliterate]
 ```
 Note that this won't transliterate the output text, it will be used only for scoring.
 
 #### Train
-If you want to train models please install `train` dependency
+If you want to train models please install `train` feature
 ```
 pip install bicleaner-ai[train]
 ```
