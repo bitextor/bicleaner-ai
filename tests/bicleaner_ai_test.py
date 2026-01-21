@@ -1,4 +1,3 @@
-import bicleaner_ai.bicleaner_ai_train as train
 import bicleaner_ai.bicleaner_ai_classifier as classifier
 from tempfile import TemporaryDirectory
 from argparse import Namespace
@@ -12,6 +11,7 @@ tf.config.run_functions_eagerly(True)
 
 
 def test_train_full():
+    import bicleaner_ai.bicleaner_ai_train as train
     with TemporaryDirectory(prefix='bicleaner-ai-test.') as dir_:
         steps = 5
         epochs = 2
@@ -69,6 +69,7 @@ def test_train_full():
 
 
 def test_train_lite():
+    import bicleaner_ai.bicleaner_ai_train as train
 
     with TemporaryDirectory(prefix='bicleaner-ai-test.') as dir_:
         steps = 5

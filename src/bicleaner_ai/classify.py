@@ -125,7 +125,7 @@ def load_metadata(args, parser):
             logging.info("LM filtering disabled")
 
         # Try loading porn_removal model
-        if not args.disable_porn_removal:
+        if not args.disable_porn_removal and not args.disable_hardrules:
             if not ("porn_removal_file" in metadata_yaml and "porn_removal_side" in metadata_yaml):
                 args.porn_removal = None
                 args.disable_porn_removal = True
