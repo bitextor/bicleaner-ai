@@ -41,13 +41,14 @@ classifiers = [
 [project.optional-dependencies]
 transliterate = [ "cyrtranslit==1.1" ]
 hardrules = [ "bicleaner-hardrules==2.10.8" ]
+and-cuda = [ "tensorflow[and-cuda]" ]
 train = [
     "sacremoses",
     "fuzzywuzzy",
     "python-Levenshtein",
     "zstandard",
 ]
-all = ["bicleaner-ai[transliterate,hardrules,train]"]
+all = ["bicleaner-ai[transliterate,hardrules,train,and-cuda]"]
 
 [build-system]
 requires = [

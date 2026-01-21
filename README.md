@@ -59,6 +59,13 @@ To install all features, just as it was installed before version 3.4, follow [Ha
 bicleaner-ai[all]
 ```
 
+#### CUDA
+Bicleaner (TensorFlow) uses the CUDA installation on the system by default, but can be installed in the Python environment if it's more convenient.
+```
+pip install bicleaner-ai[and-cuda]
+```
+This method, although it makes installation more heavy, is more reliable regarding TensorFlow and CUDA compatibility and also more convenient if the user does not have system permissions.
+
 #### Hardrules
 If you need Bicleaner Hardrules, or want to use Bicleaner AI default options as it was before 3.4, install `hardrules` feature.
 It also requires the  Python bindings with support for 7-gram language models.
@@ -89,11 +96,11 @@ After installation, three binary files (`bicleaner-ai-train`, `bicleaner-ai-clas
 
 ### TensorFlow
 TensorFlow 2 will be installed as a dependency and GPU support is required for training.
-`pip` will install latest TensorFlow supported version, but older versions `>=2.6.5` are supported and can be installed if your machine does not meet TensorFlow CUDA requirements.
+`pip` will install latest TensorFlow supported version, but older versions `>=2.16` are supported and can be installed if your machine does not meet TensorFlow CUDA requirements.
 See [this](https://www.tensorflow.org/install/source#gpu) table for the CUDA and TensorFlow versions compatibility.
 In case you want a different TensorFlow version, you can downgrade using:
 ```bash
-pip install tensorflow==2.6.5
+pip install tensorflow==2.16
 ```
 
 TensorFlow logging messages are suppressed by default, in case you want to see them you have to explicitly set `TF_CPP_MIN_LOG_LEVEL` environment variable.
