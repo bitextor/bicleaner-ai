@@ -19,9 +19,10 @@ dependencies = [
     "toolwrapper",
     "sentencepiece",
     "protobuf==3.20.3",
-    "tensorflow>=2.6.5,<2.16",
+    "tensorflow>=2.16,<2.21",
+    "tf_keras",
     "bicleaner-ai-glove==0.2.1",
-    "transformers==4.52.4",
+    "transformers==4.57.*",
     "huggingface-hub>=0.30,<1",
     "regex",
 ]
