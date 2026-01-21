@@ -1,6 +1,9 @@
 # Model files from tests
 tests/*.tgz
 
+# Manual test results
+tests/manual/results/
+
 # Vim swap files
 *.swp
 
