@@ -3,6 +3,47 @@ from tensorflow.keras import layers
 from tensorflow import keras
 import tensorflow as tf
 
+
+class SoftmaxNormalizer(layers.Layer):
+    """Softmax normalization layer (XLA-compatible replacement for Lambda).
+
+    Applies softmax normalization along specified axis.
+    Used in Decomposable Attention for attention weight normalization.
+    """
+
+    def __init__(self, axis=1, **kwargs):
+        super(SoftmaxNormalizer, self).__init__(**kwargs)
+        self.axis = axis
+
+    def call(self, x):
+        return tf.nn.softmax(x, axis=self.axis)
+
+    def get_config(self):
+        config = {"axis": self.axis}
+        base_config = super(SoftmaxNormalizer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+class SumAlong(layers.Layer):
+    """Sum along axis layer (XLA-compatible replacement for Lambda).
+
+    Sums tensor values along specified axis.
+    Used in Decomposable Attention for aggregating word representations.
+    """
+
+    def __init__(self, axis=1, **kwargs):
+        super(SumAlong, self).__init__(**kwargs)
+        self.axis = axis
+
+    def call(self, x):
+        return tf.reduce_sum(x, axis=self.axis)
+
+    def get_config(self):
+        config = {"axis": self.axis}
+        base_config = super(SumAlong, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class TokenAndPositionEmbedding(layers.Layer):
     '''Token and positional embeddings layer with pre-trained weights'''
     def __init__(self, input_dim, output_dim, input_length,

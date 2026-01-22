@@ -65,9 +65,10 @@ class SentenceGenerator(tf.keras.utils.Sequence):
         start = index*self.batch_size
         indexes = self.index[start:end]
 
+        # Pass array slices directly - encode_batch handles conversion internally
         x = self.encode_batch(
-                    self.text1[indexes].tolist(),
-                    self.text2[indexes].tolist())
+                    self.text1[indexes],
+                    self.text2[indexes])
 
         if self.weights is not None:
             w = self.weights[indexes]
@@ -141,6 +142,11 @@ class TupleSentenceGenerator(SentenceGenerator):
     '''
 
     def encode_batch(self, text1, text2):
+        # Convert to list only when needed for SentencePiece
+        # (avoids unnecessary conversion in caller)
+        if hasattr(text1, 'tolist'):
+            text1 = text1.tolist()
+            text2 = text2.tolist()
         # Vectorize sentences
         x1 = pad_sequences(self.encoder.encode(text1),
                            padding='post',
@@ -159,11 +165,14 @@ class ConcatSentenceGenerator(SentenceGenerator):
     '''
 
     def encode_batch(self, text1, text2):
+        # Convert numpy arrays to lists if needed
+        if hasattr(text1, 'tolist'):
+            text1 = text1.tolist()
+            text2 = text2.tolist()
+
         if isinstance(self.encoder, SentenceEncoder):
-            # Concatenate sentences
-            text = []
-            for sent1, sent2 in zip(text1, text2):
-                text.append(sent1 + self.separator + sent2)
+            # Concatenate sentences using f-string for efficiency
+            text = [f"{s1}{self.separator}{s2}" for s1, s2 in zip(text1, text2)]
             # Tokenize concatenated sentences with SentencePiece
             input_ids = pad_sequences(self.encoder.encode(text),
                                       padding="post",
@@ -179,7 +188,4 @@ class ConcatSentenceGenerator(SentenceGenerator):
                                    return_tensors='np',
                                    return_attention_mask=True,
                                    return_token_type_ids=False)
-            input_ids = dataset["input_ids"]
-            att_mask = dataset["attention_mask"]
-
-            return input_ids, att_mask
+            return dataset["input_ids"], dataset["attention_mask"]

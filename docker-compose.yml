@@ -10,6 +10,8 @@ x-common: &common
   build:
     context: .
     dockerfile: Dockerfile
+    # Default: GPU image (tensorflow/tensorflow:2.15.0-gpu)
+    # Override with args for CPU
   container_name: bicleaner-service
   ports:
     - "8057:8080"
@@ -18,6 +20,10 @@ x-common: &common
     - BICLEANER_MODEL_PATH=bitextor/bicleaner-ai-full-en-xx
     - BICLEANER_BATCH_SIZE=32
     - BICLEANER_MAX_BATCH_SIZE=100
+    # Performance settings
+    - BICLEANER_INFERENCE_WORKERS=2
+    - BICLEANER_MAX_CONCURRENT_REQUESTS=10
+    - BICLEANER_INFERENCE_TIMEOUT_SEC=60
   volumes:
     - bicleaner_cache:/cache/huggingface
   restart: unless-stopped
@@ -43,6 +49,11 @@ services:
   # CPU-only variant (use with --profile cpu)
   bicleaner-service-cpu:
     <<: *common
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: tensorflow/tensorflow:2.15.0
     container_name: bicleaner-service-cpu
     profiles:
       - cpu
@@ -52,6 +63,10 @@ services:
       - BICLEANER_BATCH_SIZE=16
       - BICLEANER_MAX_BATCH_SIZE=50
       - CUDA_VISIBLE_DEVICES=-1
+      # Performance settings (CPU: more workers, same limits)
+      - BICLEANER_INFERENCE_WORKERS=4
+      - BICLEANER_MAX_CONCURRENT_REQUESTS=10
+      - BICLEANER_INFERENCE_TIMEOUT_SEC=120
 
 volumes:
   bicleaner_cache:

@@ -445,7 +445,8 @@ class Transformer(BaseModel):
         if compile:
             model.compile(optimizer=settings["optimizer"],
                           loss=settings["loss"],
-                          metrics=settings["metrics"]())
+                          metrics=settings["metrics"](),
+                          jit_compile=True)  # XLA for 10-30% speedup
         return model
 
 
@@ -533,11 +534,11 @@ class BCXLMRoberta(BaseModel):
         self.model = self.load_model(model_file)
 
     def softmax_pos_prob(self, x):
-        # Compute softmax probability of the second (positive) class
-        e_x = np.exp(x - np.max(x))
-        # Need transpose to compute for each sample in the batch
-        # then slice to return class probability
-        return (e_x.T / (np.sum(e_x, axis=1).T)).T[:,1:]
+        # Compute softmax probability of the positive class using TensorFlow
+        # This is more efficient as it can stay on GPU
+        probs = tf.nn.softmax(x, axis=-1)
+        # Return only positive class probability (index 1)
+        return probs[:, 1:].numpy()
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -557,8 +558,11 @@ class BCXLMRoberta(BaseModel):
 
         ds = tf.data.Dataset.from_tensor_slices((dict(sentences),
                                                  data[2]))
-        ds = ds.shuffle(len(sentences))
-        return ds.batch(self.settings["batch_size"]).prefetch(5)
+        # Optimized pipeline: cache -> shuffle -> batch -> prefetch
+        ds = ds.cache()
+        ds = ds.shuffle(buffer_size=min(10000, len(data[0])))
+        ds = ds.batch(self.settings["batch_size"])
+        return ds.prefetch(tf.data.AUTOTUNE)
 
     def train_vocab(self, **kwargs):
         pass

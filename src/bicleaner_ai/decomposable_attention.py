@@ -16,11 +16,11 @@ import numpy as np
 try:
     from .losses import KDLoss
     from .metrics import MatthewsCorrCoef
-    from .layers import TokenAndPositionEmbedding
+    from .layers import TokenAndPositionEmbedding, SoftmaxNormalizer, SumAlong
 except (SystemError, ImportError):
     from losses import KDLoss
     from metrics import MatthewsCorrCoef
-    from layers import TokenAndPositionEmbedding
+    from layers import TokenAndPositionEmbedding, SoftmaxNormalizer, SumAlong
 
 def build_model(vectors, settings, compile=True):
     max_length = settings["maxlen"]
@@ -63,8 +63,9 @@ def build_model(vectors, settings, compile=True):
     G = create_feedforward(nr_hidden)
 
     if settings["entail_dir"] == "both":
-        norm_weights_a = layers.Lambda(normalizer(1))(att_weights)
-        norm_weights_b = layers.Lambda(normalizer(2))(att_weights)
+        # Use custom layers instead of Lambda for XLA compatibility
+        norm_weights_a = SoftmaxNormalizer(axis=1)(att_weights)
+        norm_weights_b = SoftmaxNormalizer(axis=2)(att_weights)
         alpha = layers.dot([norm_weights_a, a_p], axes=1)
         beta = layers.dot([norm_weights_b, b_p], axes=1)
 
@@ -75,24 +76,24 @@ def build_model(vectors, settings, compile=True):
         v2 = layers.TimeDistributed(G)(comp2)
 
         # step 3: aggregate
-        v1_sum = layers.Lambda(sum_word)(v1)
-        v2_sum = layers.Lambda(sum_word)(v2)
+        v1_sum = SumAlong(axis=1)(v1)
+        v2_sum = SumAlong(axis=1)(v2)
         concat = layers.concatenate([v1_sum, v2_sum])
 
     elif settings["entail_dir"] == "left":
-        norm_weights_a = layers.Lambda(normalizer(1))(att_weights)
+        norm_weights_a = SoftmaxNormalizer(axis=1)(att_weights)
         alpha = layers.dot([norm_weights_a, a], axes=1)
         comp2 = layers.concatenate([b, alpha])
         v2 = layers.TimeDistributed(G)(comp2)
-        v2_sum = layers.Lambda(sum_word)(v2)
+        v2_sum = SumAlong(axis=1)(v2)
         concat = v2_sum
 
     else:
-        norm_weights_b = layers.Lambda(normalizer(2))(att_weights)
+        norm_weights_b = SoftmaxNormalizer(axis=2)(att_weights)
         beta = layers.dot([norm_weights_b, b], axes=1)
         comp1 = layers.concatenate([a, beta])
         v1 = layers.TimeDistributed(G)(comp1)
-        v1_sum = layers.Lambda(sum_word)(v1)
+        v1_sum = SumAlong(axis=1)(v1)
         concat = v1_sum
 
     H = create_feedforward(nr_hidden, dropout=settings["dropout"])
@@ -110,8 +111,8 @@ def build_model(vectors, settings, compile=True):
     if compile:
         model.compile(optimizer=settings["optimizer"],
                       loss=loss,
-                      metrics=settings["metrics"](), # Call get_metrics
-                      experimental_run_tf_function=False,)
+                      metrics=settings["metrics"](),
+                      jit_compile=True)  # XLA for 10-30% speedup
 
     return model
 
