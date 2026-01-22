@@ -1,5 +1,6 @@
 # Bicleaner Service Dockerfile
-# Build from bicleaner-ai root: docker build -f sources/bicleaner-service/Dockerfile .
+# Build: docker build -t bicleaner-service .
+# Run:   docker run -d -p 8080:8080 --gpus all bicleaner-service
 #
 # Note: Uses local bicleaner-ai source to avoid glove dependency
 # (glove is only needed for dec_attention/lite models, not xlmr)
@@ -64,7 +65,7 @@ ENV PYTHONPATH=/app:$PYTHONPATH
 # Copy bicleaner-service application
 # =============================================================================
 
-COPY sources/bicleaner-service/app /app/app
+COPY app /app/app
 
 # =============================================================================
 # Environment and runtime configuration
