@@ -1,0 +1,42 @@
+# Docker Compose for local development and testing
+# Usage:
+#   docker compose build
+#   docker compose up
+#   curl http://localhost:8080/health
+
+services:
+  bicleaner-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bicleaner-service
+    ports:
+      - "8080:8080"
+    environment:
+      - BICLEANER_MODEL_TYPE=xlmr
+      - BICLEANER_MODEL_PATH=bitextor/bicleaner-ai-full-en-xx
+      - BICLEANER_BATCH_SIZE=32
+      - BICLEANER_MAX_BATCH_SIZE=100
+    volumes:
+      # Persist HuggingFace model cache
+      - bicleaner_cache:/cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Restart policy
+    restart: unless-stopped
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  bicleaner_cache:
+    name: bicleaner_hf_cache

@@ -14,8 +14,25 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 from tensorflow.keras import layers
 from contextlib import redirect_stdout
-from glove import Corpus, Glove
 from abc import ABC, abstractmethod
+
+# Lazy import for glove (only needed for DecomposableAttention model)
+Corpus = None
+Glove = None
+
+def _load_glove():
+    """Lazy load glove module (required only for dec_attention models)."""
+    global Corpus, Glove
+    if Corpus is None:
+        try:
+            from glove import Corpus as _Corpus, Glove as _Glove
+            Corpus = _Corpus
+            Glove = _Glove
+        except ImportError:
+            raise ImportError(
+                "glove module not found. Install bicleaner-ai-glove for "
+                "DecomposableAttention models: pip install bicleaner-ai-glove"
+            )
 import tensorflow.keras.backend as K
 import sentencepiece as sp
 import tensorflow as tf
@@ -205,6 +222,7 @@ class BaseModel(ModelInterface):
 
     def load_embed(self):
         '''Loads embeddings from model directory'''
+        _load_glove()
         glove = Glove().load(self.dir+'/'+self.settings["wv_file"])
         self.wv = glove.word_vectors
         logging.info("Loaded SentenePiece Glove vectors")
@@ -250,6 +268,7 @@ class BaseModel(ModelInterface):
         self.load_spm()
 
         logging.info("Computing co-occurence matrix")
+        _load_glove()
         # Iterator function that reads and tokenizes file
         # to avoid reading the whole input into memory
         def get_data(input_file):
