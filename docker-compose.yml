@@ -1,25 +1,37 @@
-# Docker Compose for local development and testing
+# Docker Compose for bicleaner-service
+#
 # Usage:
-#   docker compose build
-#   docker compose up
-#   curl http://localhost:8080/health
+#   GPU:  docker compose up -d                    (auto-detects GPU)
+#   CPU:  docker compose --profile cpu up -d      (force CPU mode)
+#
+#   curl http://localhost:8057/health
+
+x-common: &common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  container_name: bicleaner-service
+  ports:
+    - "8057:8080"
+  environment:
+    - BICLEANER_MODEL_TYPE=xlmr
+    - BICLEANER_MODEL_PATH=bitextor/bicleaner-ai-full-en-xx
+    - BICLEANER_BATCH_SIZE=32
+    - BICLEANER_MAX_BATCH_SIZE=100
+  volumes:
+    - bicleaner_cache:/cache/huggingface
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 120s
 
 services:
+  # Default service with GPU support
   bicleaner-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: bicleaner-service
-    ports:
-      - "8080:8080"
-    environment:
-      - BICLEANER_MODEL_TYPE=xlmr
-      - BICLEANER_MODEL_PATH=bitextor/bicleaner-ai-full-en-xx
-      - BICLEANER_BATCH_SIZE=32
-      - BICLEANER_MAX_BATCH_SIZE=100
-    volumes:
-      # Persist HuggingFace model cache
-      - bicleaner_cache:/cache/huggingface
+    <<: *common
     deploy:
       resources:
         reservations:
@@ -27,15 +39,19 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    # Restart policy
-    restart: unless-stopped
-    # Health check
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+
+  # CPU-only variant (use with --profile cpu)
+  bicleaner-service-cpu:
+    <<: *common
+    container_name: bicleaner-service-cpu
+    profiles:
+      - cpu
+    environment:
+      - BICLEANER_MODEL_TYPE=xlmr
+      - BICLEANER_MODEL_PATH=bitextor/bicleaner-ai-full-en-xx
+      - BICLEANER_BATCH_SIZE=16
+      - BICLEANER_MAX_BATCH_SIZE=50
+      - CUDA_VISIBLE_DEVICES=-1
 
 volumes:
   bicleaner_cache:
