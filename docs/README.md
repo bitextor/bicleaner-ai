@@ -27,6 +27,13 @@ Navigation hub for bicleaner-ai library documentation.
 | [training/step-by-step.md](training/step-by-step.md) | Detailed training guide |
 | [training/multilingual.md](training/multilingual.md) | Multilingual model training |
 
+## Task Management
+
+| Document | Description |
+|----------|-------------|
+| [tasks/README.md](tasks/README.md) | Task tracking workflow and rules |
+| [tasks/kanban_board.md](tasks/kanban_board.md) | Live navigation to active tasks |
+
 ## Reference
 
 | Document | Description |
