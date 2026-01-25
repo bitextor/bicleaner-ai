@@ -16,7 +16,15 @@ from tensorflow.keras import layers
 from contextlib import redirect_stdout
 from abc import ABC, abstractmethod
 
-# Lazy import for glove (only needed for DecomposableAttention model)
+# =============================================================================
+# OPTIMIZATION: Lazy import for glove module
+# =============================================================================
+# The glove module (bicleaner-ai-glove) is only needed for DecomposableAttention
+# model type. By deferring the import until actually needed, we:
+# 1. Speed up module load time for Transformer/XLMRoberta models
+# 2. Allow inference service to run without glove dependency
+# 3. Provide clearer error messages when glove is missing
+# =============================================================================
 Corpus = None
 Glove = None
 
@@ -188,6 +196,7 @@ class BaseModel(ModelInterface):
 
         with redirect_stdout(sys.stderr):
             y_pred = self.model.predict(generator, verbose=verbose)
+
         # Obtain logits if model returns HF output
         if isinstance(y_pred, TFSequenceClassifierOutput):
             y_pred = y_pred.logits
@@ -443,10 +452,12 @@ class Transformer(BaseModel):
 
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
         if compile:
+            # OPTIMIZATION: jit_compile=True enables XLA compiler for GPU
+            # operations fusion. Provides 10-30% inference speedup.
             model.compile(optimizer=settings["optimizer"],
                           loss=settings["loss"],
                           metrics=settings["metrics"](),
-                          jit_compile=True)  # XLA for 10-30% speedup
+                          jit_compile=True)
         return model
 
 
@@ -534,11 +545,11 @@ class BCXLMRoberta(BaseModel):
         self.model = self.load_model(model_file)
 
     def softmax_pos_prob(self, x):
-        # Compute softmax probability of the positive class using TensorFlow
-        # This is more efficient as it can stay on GPU
+        # OPTIMIZATION: Use tf.nn.softmax instead of NumPy implementation.
+        # This keeps computation on GPU and avoids CPU<->GPU memory transfers.
+        # Original code used manual exp/sum which forced data to CPU.
         probs = tf.nn.softmax(x, axis=-1)
-        # Return only positive class probability (index 1)
-        return probs[:, 1:].numpy()
+        return probs[:, 1:].numpy()  # Return positive class probability
 
     def build_dataset(self, filename):
         ''' Read a file into a TFDataset '''
@@ -558,7 +569,11 @@ class BCXLMRoberta(BaseModel):
 
         ds = tf.data.Dataset.from_tensor_slices((dict(sentences),
                                                  data[2]))
-        # Optimized pipeline: cache -> shuffle -> batch -> prefetch
+        # OPTIMIZATION: tf.data pipeline best practices for training performance
+        # 1. cache() - stores data in memory after first epoch
+        # 2. shuffle() - randomizes data order, capped at 10k for memory
+        # 3. batch() - groups samples for parallel processing
+        # 4. prefetch(AUTOTUNE) - overlaps data loading with model execution
         ds = ds.cache()
         ds = ds.shuffle(buffer_size=min(10000, len(data[0])))
         ds = ds.batch(self.settings["batch_size"])

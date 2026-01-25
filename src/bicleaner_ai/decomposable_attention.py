@@ -5,6 +5,11 @@ with modifications.
 
 The MIT License (MIT)
 Copyright (C) 2016-2020 ExplosionAI GmbH, 2016 spaCy GmbH, 2015 Matthew Honnibal
+
+Optimizations applied:
+    - Lambda layers replaced with custom SoftmaxNormalizer/SumAlong (see layers.py)
+      to enable XLA compilation (jit_compile=True) for 10-30% inference speedup.
+    - Removed deprecated experimental_run_tf_function=False flag (TF 2.x default).
 '''
 
 from tensorflow.keras.optimizers import Adam
@@ -109,10 +114,13 @@ def build_model(vectors, settings, compile=True):
     model = Model([input1, input2], out)
 
     if compile:
+        # OPTIMIZATION: jit_compile=True enables XLA (Accelerated Linear Algebra)
+        # compiler which fuses operations and optimizes GPU memory access patterns.
+        # Requires all layers to be XLA-compatible (no Lambda layers with closures).
         model.compile(optimizer=settings["optimizer"],
                       loss=loss,
                       metrics=settings["metrics"](),
-                      jit_compile=True)  # XLA for 10-30% speedup
+                      jit_compile=True)
 
     return model
 

@@ -139,6 +139,8 @@ def load_metadata(args, parser):
                             "or use --disable_hardrules option.") from e
                 try:
                     args.porn_removal = fasttext.load_model(os.path.join(yamldir, metadata_yaml['porn_removal_file']))
+                # FIX: Specific exceptions instead of bare except clause
+                # Catches only file-related errors, not masking other issues
                 except (FileNotFoundError, OSError):
                     args.porn_removal = fasttext.load_model(metadata_yaml['porn_removal_file'])
         else:
@@ -177,11 +179,14 @@ def load_metadata(args, parser):
         logging.debug(args.rules_config)
         args.metadata_yaml = metadata_yaml
         parser.set_defaults(**metadata_yaml)
+    # FIX: Replaced bare except with specific exception types.
+    # This follows Python best practice of catching only expected errors.
     except (yaml.YAMLError, KeyError, FileNotFoundError, ValueError) as e:
         logging.error(f"Error loading metadata: {e}")
         traceback.print_exc()
         sys.exit(1)
     except Exception as e:
+        # Fallback for unexpected errors - log the type for debugging
         logging.error(f"Unexpected error loading metadata: {e}")
         traceback.print_exc()
         sys.exit(1)
@@ -297,7 +302,9 @@ def classify(args, input, output):
             buf_sent_tl = []
             buf_score = []
 
-        # Periodic garbage collection for long-running processes
+        # FIX: Removed tf.keras.backend.clear_session() - it destroys the
+        # model and all layers, requiring full reload. This was a bug.
+        # gc.collect() is sufficient for memory management in long-running processes.
         if (nline % 1e6) == 0:
             gc.collect()
 

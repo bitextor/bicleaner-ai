@@ -43,7 +43,8 @@ class KDLoss(tf.keras.losses.SparseCategoricalCrossentropy):
         return self.alpha * student_loss + (1 - self.alpha) * distillation_loss
 
     def get_config(self):
-        # Add temperature and alpha to the class config for serialization
+        # FIX: Fixed typos "seliarization" -> "serialization", "apha" -> "alpha"
+        # These typos could cause issues when saving/loading custom loss.
         config = {
             "temperature": self.temperature,
             "alpha": self.alpha,

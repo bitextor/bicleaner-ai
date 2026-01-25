@@ -65,7 +65,10 @@ class SentenceGenerator(tf.keras.utils.Sequence):
         start = index*self.batch_size
         indexes = self.index[start:end]
 
-        # Pass array slices directly - encode_batch handles conversion internally
+        # OPTIMIZATION: Pass numpy array slices directly instead of .tolist()
+        # The conversion to list is now done inside encode_batch only when needed.
+        # This avoids redundant list conversion when using Transformers tokenizers
+        # that accept numpy arrays directly.
         x = self.encode_batch(
                     self.text1[indexes],
                     self.text2[indexes])
@@ -142,8 +145,9 @@ class TupleSentenceGenerator(SentenceGenerator):
     '''
 
     def encode_batch(self, text1, text2):
-        # Convert to list only when needed for SentencePiece
-        # (avoids unnecessary conversion in caller)
+        # OPTIMIZATION: Lazy conversion - only convert numpy arrays to lists
+        # when SentencePiece requires it. This pattern allows the caller to
+        # pass arrays directly, avoiding redundant conversions.
         if hasattr(text1, 'tolist'):
             text1 = text1.tolist()
             text2 = text2.tolist()
@@ -165,13 +169,14 @@ class ConcatSentenceGenerator(SentenceGenerator):
     '''
 
     def encode_batch(self, text1, text2):
-        # Convert numpy arrays to lists if needed
+        # OPTIMIZATION: Lazy conversion (same as TupleSentenceGenerator)
         if hasattr(text1, 'tolist'):
             text1 = text1.tolist()
             text2 = text2.tolist()
 
         if isinstance(self.encoder, SentenceEncoder):
-            # Concatenate sentences using f-string for efficiency
+            # OPTIMIZATION: f-string list comprehension is faster than
+            # append loop: [f"{s1}{sep}{s2}" for ...] vs for+append
             text = [f"{s1}{self.separator}{s2}" for s1, s2 in zip(text1, text2)]
             # Tokenize concatenated sentences with SentencePiece
             input_ids = pad_sequences(self.encoder.encode(text),
