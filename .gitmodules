@@ -1,0 +1,4 @@
+[submodule "sources/bicleaner-ai"]
+	path = sources/bicleaner-ai
+	url = https://github.com/bitextor/bicleaner-ai.git
+	branch = master
