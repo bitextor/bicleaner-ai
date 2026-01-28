@@ -1,6 +1,6 @@
 [project]
 name = "bicleaner-ai"
-version = "3.4"
+version = "3.5"
 license = {file = "LICENSE"}
 authors = [
     { "name" = "Prompsit Language Engineering", "email" = "info@prompsit.com" }
