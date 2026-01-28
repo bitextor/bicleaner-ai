@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Bicleaner AI 3.5.0:
+### Added:
+- New `and-cuda` feature to install CUDA alongside Bicleaner in the Python environment.
+### Changed:
+- Updated Transformers and Tensorflow.
+- Small code cleanup of noise generation.
+
+### Fixed:
+- Small fixes.
+
 ## Bicleaner AI 3.4.0:
 ### Changed:
  - Hardrules and training features are now optional.
