@@ -93,40 +93,44 @@ def sentence_noise(i, src, trg, args, tokenizer):
 
     # Positive samples
     for j in range(args.pos_ratio):
-        sts.append(src_strip + "\t" + trg_strip+ "\t1")
+        sts.append(f"{src_strip}\t{trg_strip}\t1")
 
     # Random misalignment
     for j in range(args.rand_ratio):
-        sts.append(src[random.randrange(1,size)].strip() + "\t" + trg_strip + "\t0")
+        rand_src = src[random.randrange(1, size)].strip()
+        sts.append(f"{rand_src}\t{trg_strip}\t0")
 
     # Frequence based noise
     for j in range(args.freq_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         replaced = replace_freq_words(t_toks, args.tl_word_freqs, args.min_freq_words)
         if replaced is not None:
-            sts.append(src_strip + "\t" + tokenizer.detokenize(replaced) + "\t0")
+            detok = tokenizer.detokenize(replaced)
+            sts.append(f"{src_strip}\t{detok}\t0")
 
     # Randomly omit words
     for j in range(args.womit_ratio):
         t_toks = tokenizer.tokenize(trg[i])
         omitted = omit_words(t_toks, args.min_omit_words)
-        if omitted != []:
-            sts.append(src_strip + "\t" + tokenizer.detokenize(omitted) + "\t0")
+        if omitted:
+            detok = tokenizer.detokenize(omitted)
+            sts.append(f"{src_strip}\t{detok}\t0")
 
-    # Misalginment by fuzzy matching
+    # Misalignment by fuzzy matching
     if args.fuzzy_ratio > 0:
-        explored = {n:trg[n] for n in random.sample(range(size), min(3000, size))}
+        explored = {n: trg[n] for n in random.sample(range(size), min(3000, size))}
         matches = process.extract(trg[i], explored,
                                   scorer=fuzz.token_sort_ratio,
                                   limit=25)
-        m_index = [m[2] for m in matches if m[1]<70][:args.fuzzy_ratio]
+        m_index = [m[2] for m in matches if m[1] < 70][:args.fuzzy_ratio]
         for m in m_index:
-            sts.append(src_strip + "\t" + trg[m].strip() + "\t0")
+            trg_m = trg[m].strip()
+            sts.append(f"{src_strip}\t{trg_m}\t0")
 
-    # Misalgniment with neighbour sentences
-    if args.neighbour_mix and i <size-2 and i > 1:
-        sts.append(src_strip + "\t" + trg[i+1].strip()+ "\t0")
-        sts.append(src_strip + "\t" + trg[i-1].strip()+ "\t0")
+    # Misalignment with neighbour sentences
+    if args.neighbour_mix and i < size - 2 and i > 1:
+        sts.append(f"{src_strip}\t{trg[i+1].strip()}\t0")
+        sts.append(f"{src_strip}\t{trg[i-1].strip()}\t0")
 
     return sts
 
@@ -149,10 +153,8 @@ def worker_process(num, src, trg, jobs_queue, output_queue, args):
                 output.extend(sentence_noise(i, src, trg, args, tokenizer))
 
             output_file_name = mktemp()
-            output_file = zstandard.open(output_file_name, 'wt')
-            for j in output:
-                output_file.write(j + '\n')
-            output_file.close()
+            with zstandard.open(output_file_name, 'wt') as output_file:
+                output_file.writelines(f"{line}\n" for line in output)
             output_queue.put((job,output_file_name))
         else:
             logging.debug(f"Exiting worker {num}")
@@ -188,7 +190,7 @@ def reduce_process(output_queue, output_file, block_size):
         nblock, filein_name = heappop(h)
         last_block += block_size
 
-        with zstdandard.open(filein_name, 'rt') as filein:
+        with zstandard.open(filein_name, 'rt') as filein:
             for i in filein:
                 output_file.write(i)
 
