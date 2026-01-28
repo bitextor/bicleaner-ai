@@ -43,10 +43,10 @@ class KDLoss(tf.keras.losses.SparseCategoricalCrossentropy):
         return self.alpha * student_loss + (1 - self.alpha) * distillation_loss
 
     def get_config(self):
-        # Add temperature and alpha to the class config for seliarization
+        # Add temperature and alpha to the class config for serialization
         config = {
             "temperature": self.temperature,
-            "apha": self.alpha,
+            "alpha": self.alpha,
         }
         base_config = super(KDLoss, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))

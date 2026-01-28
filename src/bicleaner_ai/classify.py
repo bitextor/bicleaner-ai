@@ -139,8 +139,8 @@ def load_metadata(args, parser):
                             "or use --disable_hardrules option.") from e
                 try:
                     args.porn_removal = fasttext.load_model(os.path.join(yamldir, metadata_yaml['porn_removal_file']))
-                except:
-                    args.porn_removal = fasttext.load_model(args.metadata_yaml['porn_removal_file'])
+                except (FileNotFoundError, OSError):
+                    args.porn_removal = fasttext.load_model(metadata_yaml['porn_removal_file'])
         else:
             args.porn_removal = None
             logging.info("Porn removal disabled")
@@ -177,8 +177,12 @@ def load_metadata(args, parser):
         logging.debug(args.rules_config)
         args.metadata_yaml = metadata_yaml
         parser.set_defaults(**metadata_yaml)
-    except:
-        logging.error("Error loading metadata")
+    except (yaml.YAMLError, KeyError, FileNotFoundError, ValueError) as e:
+        logging.error(f"Error loading metadata: {e}")
+        traceback.print_exc()
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"Unexpected error loading metadata: {e}")
         traceback.print_exc()
         sys.exit(1)
     finally:
@@ -293,10 +297,9 @@ def classify(args, input, output):
             buf_sent_tl = []
             buf_score = []
 
-        # Avoid memory not beeing freed too late
+        # Periodic garbage collection for long-running processes
         if (nline % 1e6) == 0:
             gc.collect()
-            tf.keras.backend.clear_session()
 
     # Score remaining sentences
     if len(buf_sent) > 0:
