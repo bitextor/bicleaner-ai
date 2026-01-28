@@ -1,9 +1,5 @@
 #!/usr/bin/env python
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import version
 
 name = "bicleaner_ai"
-
-try:
-    __version__ = version(name)
-except PackageNotFoundError:
-    __version__ = "3.4"
+__version__ = version(name)

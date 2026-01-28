@@ -177,12 +177,8 @@ def load_metadata(args, parser):
         logging.debug(args.rules_config)
         args.metadata_yaml = metadata_yaml
         parser.set_defaults(**metadata_yaml)
-    except (yaml.YAMLError, KeyError, FileNotFoundError, ValueError) as e:
-        logging.error(f"Error loading metadata: {e}")
-        traceback.print_exc()
-        sys.exit(1)
-    except Exception as e:
-        logging.error(f"Unexpected error loading metadata: {e}")
+    except:
+        logging.error("Error loading metadata")
         traceback.print_exc()
         sys.exit(1)
     finally:
@@ -297,9 +293,10 @@ def classify(args, input, output):
             buf_sent_tl = []
             buf_score = []
 
-        # Periodic garbage collection for long-running processes
+        # Avoid memory not beeing freed too late
         if (nline % 1e6) == 0:
             gc.collect()
+            tf.keras.backend.clear_session()
 
     # Score remaining sentences
     if len(buf_sent) > 0:
