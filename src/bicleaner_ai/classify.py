@@ -60,6 +60,7 @@ def argument_parser():
     groupO.add_argument('--run_all_rules', default=False, action='store_true', help="Run all rules of Hardrules instead of stopping at first discard")
     groupO.add_argument('--rules_config', type=argparse.FileType('r'), default=None, help="Hardrules configuration file")
     groupO.add_argument('--require_gpu', default=False, action='store_true', help="Quit if the GPUs are not available")
+    groupO.add_argument('--mixed_precision', '--fp16', default=False, action='store_true', help="Enable mixed precision (float16) inference")
 
     # HuggingFace Hub options
     groupO.add_argument('--offline', default=False, action='store_true', help="Don't try to download the model, instead try directly to load from local storage")
@@ -93,6 +94,10 @@ def load_metadata(args, parser):
             args.source_tokenizer_command=metadata_yaml["source_tokenizer_command"]
         if "target_tokenizer_command" in metadata_yaml:
             args.target_tokenizer_command=metadata_yaml["target_tokenizer_command"]
+
+        if args.mixed_precision:
+            logging.info("Mixed precision with fp16 inference enabled")
+            tf.keras.mixed_precision.set_global_policy('mixed_float16')
 
         # Load classifier
         if "calibration_params" in metadata_yaml["classifier_settings"]:
@@ -169,7 +174,6 @@ def load_metadata(args, parser):
             logging.warning("Using multilingual model, disabling language-dependant rules: " + ', '.join(MULTI_DISABLE))
             for rule in MULTI_DISABLE:
                 args.rules_config[rule] = False
-
 
         logging.debug("Model configuration")
         logging.debug(metadata_yaml)

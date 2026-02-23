@@ -2,6 +2,7 @@ import bicleaner_ai.bicleaner_ai_classifier as classifier
 from tempfile import TemporaryDirectory
 from argparse import Namespace
 from os.path import exists
+from pytest import approx
 import tensorflow as tf
 import requests
 import tarfile
@@ -224,7 +225,8 @@ def test_classify_full():
 
         # Test normal output
         scores = read_scores(dir_ + '/scores')
-        assert scores == [0.675, 0.999, 0.005, 0.863, 0.918, 0.999, 0.940, 0.950, 0.999, 0.723]
+        scores_normal = [0.675, 0.999, 0.005, 0.863, 0.918, 0.999, 0.940, 0.950, 0.999, 0.723]
+        assert scores == scores_normal
 
         # Run classifier with calibrated option
         argv.insert(0, '--calibrated')
@@ -256,3 +258,12 @@ def test_classify_full():
                           (-0.432, 0.530),
                          ]
 
+        # Run classifier with fp16 option
+        # this one has to be the last because mixed precision is set globally
+        argv[0] = '--mixed_precision'
+        args = classifier.initialization(argv)
+        classifier.perform_classification(args)
+        args.output.flush()
+
+        scores = read_scores(dir_ + '/scores')
+        assert scores == approx(scores_normal, abs=0.0025)
