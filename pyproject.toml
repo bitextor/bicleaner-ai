@@ -1,6 +1,6 @@
 [project]
 name = "bicleaner-ai"
-version = "3.5"
+version = "3.6"
 license = {file = "LICENSE"}
 authors = [
     { "name" = "Prompsit Language Engineering", "email" = "info@prompsit.com" }
@@ -18,7 +18,7 @@ dependencies = [
     "pytest",
     "toolwrapper",
     "sentencepiece",
-    "protobuf==3.20.3",
+    "protobuf>=6.33",
     "tensorflow>=2.16,<2.21",
     "tf_keras",
     "bicleaner-ai-glove==0.2.1",
